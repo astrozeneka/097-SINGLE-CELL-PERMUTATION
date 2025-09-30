@@ -1,17 +1,26 @@
 import { spawn } from 'child_process';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const filename = searchParams.get('filename');
+  const nPermutations = searchParams.get('n_permutations') || '10';
+
+  if (!filename) {
+    return Response.json({ error: 'filename parameter is required' }, { status: 400 });
+  }
+
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
     start(controller) {
       const pythonPath = "/mnt/sisplockers/jantappapac/Ryan/conda/scimap/bin/python";
       const scriptPath = "43_spatial_distance_permutation_test.py";
+      const outputFilename = `permutation_results_${filename}`;
       const args = [
-        "--input", "data/S19_12126B1_classified_cells_with_phenotypes.csv",
-        "--n_permutations", "100",
-        "--output", "data/permutation_results_S20_2317A9.csv",
-        "--sample", "S20_2317A9"
+        "--input", `data/${filename}`,
+        "--n_permutations", nPermutations,
+        "--output", `data/${outputFilename}`,
+        "--sample", filename.replace('.csv', '')
       ];
 
       const childProcess = spawn(pythonPath, ['-u', scriptPath, ...args], {

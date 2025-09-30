@@ -7,6 +7,7 @@ export default function Home() {
   const [nPermutations, setNPermutations] = useState<number>(10);
   const [logs, setLogs] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [outputFilename, setOutputFilename] = useState<string | null>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -36,9 +37,12 @@ export default function Home() {
 
       setLogs((prev) => [...prev, `File uploaded: ${uploadResult.filename}`]);
 
+      const outputFile = `permutation_results_${uploadResult.filename}`;
+      setOutputFilename(outputFile);
+
       // Run permutation test with SSE
       setLogs((prev) => [...prev, "Starting permutation test..."]);
-      const eventSource = new EventSource("/api/run-permutation");
+      const eventSource = new EventSource(`/api/run-permutation?filename=${uploadResult.filename}&n_permutations=${nPermutations}`);
 
       eventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);
@@ -114,12 +118,23 @@ export default function Home() {
         </form>
 
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Output Logs</h2>
-          <div className="bg-gray-900 text-green-400 font-mono text-sm p-4 rounded-md h-96 overflow-y-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-gray-800">Output Logs</h2>
+            {!isProcessing && outputFilename && (
+              <a
+                href={`/api/download-file?filename=${outputFilename}`}
+                download
+                className="bg-green-600 text-white font-medium py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
+              >
+                Download Results
+              </a>
+            )}
+          </div>
+          <div className="bg-gray-900 text-green-400 font-mono text-sm p-4 rounded-md h-96 overflow-y-auto flex flex-col-reverse">
             {logs.length === 0 ? (
               <div className="text-gray-500">No logs yet...</div>
             ) : (
-              logs.map((log, index) => (
+              [...logs].reverse().map((log, index) => (
                 <div key={index} className="mb-1">
                   {log}
                 </div>
