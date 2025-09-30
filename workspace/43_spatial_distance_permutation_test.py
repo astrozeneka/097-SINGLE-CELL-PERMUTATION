@@ -10,7 +10,7 @@ import scimap as sm
 #              'Exhausted_Cytotoxic_T_cells', 'Exhausted_Helper_T_cells', 'Tregs', 'Other_T_cells',
 #              'Antigen_presenting_cells', 'M1_Macrophages', 'M2_Macrophages', 'Other']
 
-def process_single_file(file_path, n_permutations=25):
+def process_single_file(file_path, output_path, n_permutations=25):
     df = pd.read_csv(file_path)
     df["Phenotype"] = df["Classification"].apply(class_to_pheno)
     # The total list of usable phenotype is all phenotype with at least 10 cells
@@ -64,21 +64,18 @@ def process_single_file(file_path, n_permutations=25):
                 else:
                     all_stat = pd.concat([all_stat, pd.DataFrame([stat_row])], ignore_index=True)
 
-    os.makedirs(f"permutation_results/n{n_permutations}", exist_ok=True)
-    all_stat.to_csv(f"permutation_results/n{n_permutations}/{sample_slug}_spatial_distance_permutations.csv", index=False)
+    output_dir = os.path.dirname(output_path)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+    all_stat.to_csv(output_path, index=False)
     print()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Compute spatial interaction metrics between phenotypes")
-    parser.add_argument('--selector', type=str,
-                        default='../013-LARC/*/proj-qupath-alignment-*_5Cycles_aligned_tschnm+class/cell_data_with_regions_and_parent_areas*.csv')
-    parser.add_argument("--slug", type=str, default="_T", help="Sample slug to process")
+    parser.add_argument('--input', type=str, required=True, help='Input CSV file path')
+    parser.add_argument('--output', type=str, required=True, help='Output CSV file path')
     parser.add_argument("--n_permutations", type=int, default=25, help="Number of permutations to perform")
     args = parser.parse_args()
 
-    file_list = glob(args.selector.strip('"'))
-    file_list = [f for f in file_list if args.slug in f]
-
-    for file_path in file_list:
-        print(f"Processing file: {file_path}")
-        process_single_file(file_path)
+    print(f"Processing file: {args.input}")
+    process_single_file(args.input, args.output, args.n_permutations)
