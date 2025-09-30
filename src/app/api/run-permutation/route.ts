@@ -14,7 +14,10 @@ export async function GET() {
         "--sample", "S20_2317A9"
       ];
 
-      const childProcess = spawn(pythonPath, [scriptPath, ...args], { cwd: 'workspace' });
+      const childProcess = spawn(pythonPath, ['-u', scriptPath, ...args], {
+        cwd: 'workspace',
+        env: { ...process.env, PYTHONUNBUFFERED: '1' }
+      });
 
       // Send acknowledgment
       controller.enqueue(encoder.encode(`data: ${JSON.stringify({
