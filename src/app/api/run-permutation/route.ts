@@ -5,17 +5,14 @@ const execAsync = promisify(exec);
 
 export async function GET() {
   try {
-    const { stdout } = await execAsync('squeue');
-    return Response.json({ output: stdout });
     let pythonPath = "/mnt/sisplockers/jantappapac/Ryan/conda/scimap/bin/python";
     let scriptPath = "workspace/43_spatial_distance_permutation_test.py";
-    let scriptParameter = " --selector workspace/data/cell_data_with_regions_and_parent_areas_S20_2317A9.csv --n_permutations 100"
-    // Python path
-    // /mnt/sisplockers/jantappapac/Ryan/conda/scimap/bin/python
-    /*
-     {
-    "output": "             JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)\n"
-    */
+    let scriptParameter = " --input workspace/data/S19_12126B1_classified_cells_with_phenotypes.csv --n_permutations 10 --output workspace/data/permutation_results_S20_2317A9.csv --sample S20_2317A9";
+
+    const command = `${pythonPath} ${scriptPath}${scriptParameter}`;
+    const { stdout, stderr } = await execAsync(command);
+
+    return Response.json({ output: stdout, error: stderr });
   } catch (error: any) {
     return Response.json({ error: error.message }, { status: 500 });
   }
