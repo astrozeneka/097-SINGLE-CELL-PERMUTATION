@@ -2,9 +2,6 @@ import pandas as pd
 import anndata as ad
 import os
 
-phenotype_df = pd.read_csv("phenotypes.csv")
-phenotype_list = phenotype_df['Phenotype'].tolist()
-phenotypes = list(set(phenotype_list))
 
 def class_to_pheno(classification):
     phenotype = phenotype_df[['Phenotype', 'Classification']].loc[phenotype_df['Classification'] == classification]
