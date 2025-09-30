@@ -108,7 +108,7 @@ def process_single_file(file_path, output_path, sample_slug, n_permutations=25):
     pheno_counts = df['Phenotype'].value_counts()
     usable_phenotypes = pheno_counts[pheno_counts >= 10].index.tolist()
     usable_phenotypes = [u for u in usable_phenotypes if u != 'Other']
-    df = df[['Object ID', 'Parent Region', 'Parent Area µm^2', 'Centroid X',
+    df = df[['Object ID', 'Centroid X',
              'Centroid Y', 'Phenotype']]
 
     # Subsample for quick testing
