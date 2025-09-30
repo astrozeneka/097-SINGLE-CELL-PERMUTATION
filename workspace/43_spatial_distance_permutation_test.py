@@ -3,16 +3,15 @@ import os
 import argparse
 from glob import glob
 
-from utils import class_to_pheno_v2, get_sample_slug_from_path, df2adata, class_to_pheno
+from utils import get_sample_slug_from_path, df2adata, class_to_pheno
 import scimap as sm
 
 #phenotypes = ['Tumor_cells', 'Tumor_proliferating_cells', 'B_cells', 'Vessels', 'Cytotoxic_T_cells', 'Helper_T_cells',
 #              'Exhausted_Cytotoxic_T_cells', 'Exhausted_Helper_T_cells', 'Tregs', 'Other_T_cells',
 #              'Antigen_presenting_cells', 'M1_Macrophages', 'M2_Macrophages', 'Other']
 
-def process_single_file(file_path, output_path, n_permutations=25):
+def process_single_file(file_path, output_path, sample_slug, n_permutations=25):
     df = pd.read_csv(file_path)
-    df["Phenotype"] = df["Classification"].apply(class_to_pheno)
     # The total list of usable phenotype is all phenotype with at least 10 cells
     pheno_counts = df['Phenotype'].value_counts()
     usable_phenotypes = pheno_counts[pheno_counts >= 10].index.tolist()
@@ -20,7 +19,6 @@ def process_single_file(file_path, output_path, n_permutations=25):
     df = df[['Object ID', 'Parent Region', 'Parent Area µm^2', 'Parent Classification', 'Classification', 'Area', 'Centroid X',
              'Centroid Y', 'Phenotype']]
 
-    sample_slug = get_sample_slug_from_path(file_path)
     # Subsample for quick testing
     # df = df.head(5000)  # TODO, remove this line for full analysis
     all_stat = None
@@ -73,9 +71,10 @@ def process_single_file(file_path, output_path, n_permutations=25):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Compute spatial interaction metrics between phenotypes")
     parser.add_argument('--input', type=str, required=True, help='Input CSV file path')
+    parser.add_argument("--sample", type=str, default=None, help="Sample ID")
     parser.add_argument('--output', type=str, required=True, help='Output CSV file path')
     parser.add_argument("--n_permutations", type=int, default=25, help="Number of permutations to perform")
     args = parser.parse_args()
 
     print(f"Processing file: {args.input}")
-    process_single_file(args.input, args.output, args.n_permutations)
+    process_single_file(args.input, args.output, args.sample, args.n_permutations)
