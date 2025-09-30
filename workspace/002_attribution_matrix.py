@@ -30,16 +30,27 @@ def plot_heatmap(phenotype_means, save_path, phenotype_list):
     # Calculate z-scores if we have enough phenotypes
     if len(phenotype_means_reordered) > 1:
         phenotype_zscore = phenotype_means_reordered.apply(lambda x: zscore(x, nan_policy='omit'), axis=0)
-        cbar_label = 'Z-score'
+        cbar_label = 'Mean Intensity (Z-score)'
     else:
         phenotype_zscore = phenotype_means_reordered
-        cbar_label = 'Expression'
+        cbar_label = 'Mean Intensity'
 
     # Create heatmap
     plt.figure(figsize=(10, 8))
-    sns.heatmap(phenotype_zscore, cmap='bwr', center=0, annot=False,
-                cbar_kws={'label': cbar_label})
-    plt.title('Phenotype Attribution Matrix')
+
+    # Calculate symmetric vmin/vmax for colorbar
+    max_abs_value = max(abs(phenotype_zscore.min().min()), abs(phenotype_zscore.max().max()))
+
+    ax = sns.heatmap(phenotype_zscore, cmap='bwr', center=0, annot=False,
+                vmin=-max_abs_value, vmax=max_abs_value,
+                cbar_kws={'label': cbar_label, 'shrink': 0.18, 'aspect': 4})
+
+    # Add border to colorbar
+    cbar = ax.collections[0].colorbar
+    cbar.outline.set_edgecolor('black')
+    cbar.outline.set_linewidth(1)
+
+    plt.title('')
     plt.xlabel('Markers')
     plt.ylabel('Phenotypes')
     plt.xticks(rotation=45, ha='right')
@@ -50,8 +61,10 @@ def plot_heatmap(phenotype_means, save_path, phenotype_list):
 if __name__ == '__main__':
     df = pd.read_csv(args.input, index_col=0)
     marker_list = args.markers.split(',')
+    marker_list = [a.strip() for a in marker_list]
 
     phenotype_list = args.phenotypes.split(',')
+    phenotype_list = [a.strip() for a in phenotype_list]
 
     # Calculate aggregated mean: average intensity by phenotype
     phenotype_means = df.groupby(args.phenotype)[marker_list].mean()
