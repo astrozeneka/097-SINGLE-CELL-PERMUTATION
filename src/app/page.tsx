@@ -76,66 +76,80 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-800 mb-8">
-          Spatial Distance Permutation Test
-        </h1>
-
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-2">
-              File:
-            </label>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-6">
+      <div className="max-w-5xl mx-auto">
+        <header className="mb-6">
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-light text-slate-100 tracking-wide">
+              Spatial Distance Permutation Test
+            </h1>
+            {isProcessing && (
+              <span className="text-xs text-red-400 font-medium uppercase tracking-wider animate-pulse">
+                Do not close this page
+              </span>
+            )}
           </div>
+          <div className="h-px bg-gradient-to-r from-slate-700 via-slate-600 to-transparent mt-2"></div>
+        </header>
 
-          <div className="mb-6">
-            <label className="block text-gray-700 font-medium mb-2">
-              N Permutations:
-            </label>
-            <input
-              type="number"
-              value={nPermutations}
-              onChange={(e) => setNPermutations(parseInt(e.target.value))}
-              min="1"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+        <form onSubmit={handleSubmit} className="mb-6">
+          <div className="grid grid-cols-[1fr_200px_auto] gap-3 items-end">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1.5 uppercase tracking-wider">
+                Input File
+              </label>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-slate-400 mb-1.5 uppercase tracking-wider">
+                Permutations
+              </label>
+              <input
+                type="number"
+                value={nPermutations}
+                onChange={(e) => setNPermutations(parseInt(e.target.value))}
+                min="1"
+                className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isProcessing}
+              className="px-5 py-1.5 bg-slate-800 text-slate-200 text-sm hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 disabled:cursor-not-allowed transition-colors"
+            >
+              {isProcessing ? "Running..." : "Run"}
+            </button>
           </div>
-
-          <button
-            type="submit"
-            disabled={isProcessing}
-            className="w-full bg-blue-600 text-white font-medium py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            {isProcessing ? "Processing..." : "Submit"}
-          </button>
         </form>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Output Logs</h2>
+        <div>
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-sm font-light text-slate-400 uppercase tracking-wider">
+              Console Output
+            </h2>
             {!isProcessing && outputFilename && (
               <a
                 href={`/api/download-file?filename=${outputFilename}`}
                 download
-                className="bg-green-600 text-white font-medium py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
+                className="px-3 py-1 bg-emerald-900/50 text-emerald-400 text-xs hover:bg-emerald-900/70 transition-colors"
               >
-                Download Results
+                ↓ Download Results
               </a>
             )}
           </div>
-          <div className="bg-gray-900 text-green-400 font-mono text-sm p-4 rounded-md h-96 overflow-y-auto flex flex-col-reverse">
+          <div className="bg-slate-900/50 backdrop-blur font-mono text-xs p-3 h-[calc(100vh-280px)] overflow-y-auto flex flex-col-reverse border-l border-slate-800">
             {logs.length === 0 ? (
-              <div className="text-gray-500">No logs yet...</div>
+              <div className="text-slate-600 italic">Waiting for input...</div>
             ) : (
               [...logs].reverse().map((log, index) => (
-                <div key={index} className="mb-1">
+                <div key={index} className="text-slate-300 leading-relaxed py-0.5">
                   {log}
                 </div>
               ))
