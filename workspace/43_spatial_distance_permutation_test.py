@@ -3,8 +3,100 @@ import os
 import argparse
 from glob import glob
 
-from utils import get_sample_slug_from_path, df2adata, class_to_pheno
+from utils import get_sample_slug_from_path, class_to_pheno
 import scimap as sm
+
+
+def df2adata(df, imageid="sample", additional_cols=[]):
+
+    feature_cols = [
+        "DAPI1",
+        "Ki67",
+        "-",
+        "CD11c",
+        "DAPI2",
+        "CD3d",
+        "--",
+        "MHCII",
+        "DAPI3",
+        "CD68",
+        "CD8",
+        "PD1",
+        "DAPI4",
+        "FOXP3",
+        "CD4",
+        "CD20",
+        "DAPI5",
+        "PanCK",
+        "CD163",
+        "CD31"
+    ]
+    for col in feature_cols:
+        if col + ': Cell: Mean' in df.columns:
+            # rename
+            df.rename(columns={col + ': Cell: Mean': col}, inplace=True)
+
+    # Define metadata columns - mapping to your new data structure
+    meta_cols = [
+        'Object ID',  # CellID
+        'Centroid X',  # X_centroid
+        'Centroid Y',  # Y_centroid
+        'Parent Region',  # Additional metadata
+        'Parent Area µm^2', # Parent Area
+        'Parent Classification',
+        'Classification',
+        'Area',
+        'imageid'  # Sample slug
+    ] + additional_cols
+
+    # Check which feature columns are actually present in the data
+    available_features = [col for col in feature_cols if col in df.columns]
+    missing_features = [col for col in feature_cols if col not in df.columns]
+
+    print(f"Available features: {available_features}")
+    #if missing_features:
+    #    print(f"Missing features: {missing_features}")
+
+    # Check metadata columns
+    available_meta = [col for col in meta_cols if col in df.columns]
+    missing_meta = [col for col in meta_cols if col not in df.columns]
+
+    print(f"Available metadata columns: {available_meta}")
+    if missing_meta:
+        print(f"Missing metadata: {missing_meta}")
+
+    # Extract expression data and metadata
+    expr = df[available_features].copy()
+    meta = df[available_meta].copy()
+
+    # Create simplified marker names for AnnData (remove ": Cell: Mean" suffix)
+    marker_names = [col.replace(': Cell: Mean', '') for col in available_features]
+
+    # Create AnnData object
+    adata = ad.AnnData(expr.values)
+    adata.var.index = marker_names  # simplified marker names
+
+    # Set up observations (cells) metadata
+    # Use Object ID as the index
+    meta_indexed = meta.set_index('Object ID')
+    adata.obs = meta_indexed
+
+    # Rename coordinate columns to match scimap expectations
+    if 'Centroid X' in adata.obs.columns:
+        adata.obs['X_centroid'] = adata.obs['Centroid X']
+    if 'Centroid Y' in adata.obs.columns:
+        adata.obs['Y_centroid'] = adata.obs['Centroid Y']
+
+    # Add sample slug to observations
+    adata.obs['imageid'] = adata.obs[imageid]
+
+    # Add all markers to uns
+    adata.uns['all_markers'] = list(adata.var.index)
+
+    # Add copy of the original data to raw
+    adata.raw = adata.copy()
+
+    return adata
 
 #phenotypes = ['Tumor_cells', 'Tumor_proliferating_cells', 'B_cells', 'Vessels', 'Cytotoxic_T_cells', 'Helper_T_cells',
 #              'Exhausted_Cytotoxic_T_cells', 'Exhausted_Helper_T_cells', 'Tregs', 'Other_T_cells',
@@ -23,7 +115,8 @@ def process_single_file(file_path, output_path, sample_slug, n_permutations=25):
     # df = df.head(5000)  # TODO, remove this line for full analysis
     all_stat = None
     for i in range(n_permutations):
-        print("Processing permutation", i + 1, "of", n_permutations, end='\r')
+        print("")
+        print("** Processing permutation", i + 1, "of", n_permutations)
         df_permuted = df.copy()
         df_permuted['Phenotype'] = df_permuted['Phenotype'].sample(frac=1).values
         df_permuted['imageid'] = sample_slug
