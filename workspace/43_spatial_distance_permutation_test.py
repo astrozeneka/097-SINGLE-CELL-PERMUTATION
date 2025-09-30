@@ -5,7 +5,7 @@ from glob import glob
 
 from utils import get_sample_slug_from_path, class_to_pheno
 import scimap as sm
-
+import anndata as ad
 
 def df2adata(df, imageid="sample", additional_cols=[]):
 
@@ -62,8 +62,8 @@ def df2adata(df, imageid="sample", additional_cols=[]):
     missing_meta = [col for col in meta_cols if col not in df.columns]
 
     print(f"Available metadata columns: {available_meta}")
-    if missing_meta:
-        print(f"Missing metadata: {missing_meta}")
+    #if missing_meta:
+    #    print(f"Missing metadata: {missing_meta}")
 
     # Extract expression data and metadata
     expr = df[available_features].copy()
