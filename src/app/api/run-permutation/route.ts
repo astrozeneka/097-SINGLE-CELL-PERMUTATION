@@ -9,7 +9,7 @@ export async function GET() {
       const scriptPath = "43_spatial_distance_permutation_test.py";
       const args = [
         "--input", "data/S19_12126B1_classified_cells_with_phenotypes.csv",
-        "--n_permutations", "10",
+        "--n_permutations", "100",
         "--output", "data/permutation_results_S20_2317A9.csv",
         "--sample", "S20_2317A9"
       ];
