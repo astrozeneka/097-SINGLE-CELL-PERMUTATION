@@ -98,7 +98,7 @@ if __name__ == '__main__':
                     else: # curr_val >= permu_avg
                         more_extreme_count = (sub_permu_df[stat] >= curr_val).sum()
                         p_val = more_extreme_count / len(sub_permu_df)
-                        effect = "repulsion"
+                        effect = "avoidance"
                     sample_attraction_repulsion.append({
                         "source_phenotype": src_pheno,
                         "target_phenotype": dest_pheno,
