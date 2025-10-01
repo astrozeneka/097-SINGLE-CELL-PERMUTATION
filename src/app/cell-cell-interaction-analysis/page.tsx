@@ -4,13 +4,14 @@ import { useState, FormEvent } from "react";
 
 interface FileTuple {
   id: number;
-  file1: File | null;
-  file2: File | null;
+  sampleId: string;
+  observedFile: File | null;
+  permutedFile: File | null;
 }
 
 export default function CellCellInteractionAnalysis() {
   const [fileTuples, setFileTuples] = useState<FileTuple[]>([
-    { id: 1, file1: null, file2: null }
+    { id: 1, sampleId: "", observedFile: null, permutedFile: null }
   ]);
   const [nextId, setNextId] = useState(2);
   const [logs, setLogs] = useState<string[]>([]);
@@ -19,7 +20,7 @@ export default function CellCellInteractionAnalysis() {
   const [zipFilename, setZipFilename] = useState<string | null>(null);
 
   const addFileTuple = () => {
-    setFileTuples([...fileTuples, { id: nextId, file1: null, file2: null }]);
+    setFileTuples([...fileTuples, { id: nextId, sampleId: "", observedFile: null, permutedFile: null }]);
     setNextId(nextId + 1);
   };
 
@@ -29,15 +30,21 @@ export default function CellCellInteractionAnalysis() {
     }
   };
 
-  const updateFile1 = (id: number, file: File | null) => {
+  const updateSampleId = (id: number, sampleId: string) => {
     setFileTuples(fileTuples.map(tuple =>
-      tuple.id === id ? { ...tuple, file1: file } : tuple
+      tuple.id === id ? { ...tuple, sampleId } : tuple
     ));
   };
 
-  const updateFile2 = (id: number, file: File | null) => {
+  const updateObservedFile = (id: number, file: File | null) => {
     setFileTuples(fileTuples.map(tuple =>
-      tuple.id === id ? { ...tuple, file2: file } : tuple
+      tuple.id === id ? { ...tuple, observedFile: file } : tuple
+    ));
+  };
+
+  const updatePermutedFile = (id: number, file: File | null) => {
+    setFileTuples(fileTuples.map(tuple =>
+      tuple.id === id ? { ...tuple, permutedFile: file } : tuple
     ));
   };
 
@@ -46,8 +53,12 @@ export default function CellCellInteractionAnalysis() {
 
     // Validate all file tuples
     for (const tuple of fileTuples) {
-      if (!tuple.file1 || !tuple.file2) {
-        alert("Please select both files for each pair");
+      if (!tuple.sampleId.trim()) {
+        alert("Please provide a sample ID for each pair");
+        return;
+      }
+      if (!tuple.observedFile || !tuple.permutedFile) {
+        alert("Please select both observed and permuted files for each pair");
         return;
       }
     }
@@ -60,25 +71,24 @@ export default function CellCellInteractionAnalysis() {
       const uploadedFileTuples: Array<[string, string, string]> = [];
 
       for (const tuple of fileTuples) {
-        setLogs((prev) => [...prev, `Uploading files for pair ${tuple.id}...`]);
+        setLogs((prev) => [...prev, `Uploading files for sample ${tuple.sampleId}...`]);
 
-        // Upload file1 (observed)
-        const formData1 = new FormData();
-        formData1.append("file", tuple.file1!);
-        const upload1 = await fetch("/api/upload-file", { method: "POST", body: formData1 });
-        const result1 = await upload1.json();
-        if (!result1.success) throw new Error("File upload failed");
+        // Upload observed file
+        const formDataObserved = new FormData();
+        formDataObserved.append("file", tuple.observedFile!);
+        const uploadObserved = await fetch("/api/upload-file", { method: "POST", body: formDataObserved });
+        const resultObserved = await uploadObserved.json();
+        if (!resultObserved.success) throw new Error("Observed file upload failed");
 
-        // Upload file2 (permuted)
-        const formData2 = new FormData();
-        formData2.append("file", tuple.file2!);
-        const upload2 = await fetch("/api/upload-file", { method: "POST", body: formData2 });
-        const result2 = await upload2.json();
-        if (!result2.success) throw new Error("File upload failed");
+        // Upload permuted file
+        const formDataPermuted = new FormData();
+        formDataPermuted.append("file", tuple.permutedFile!);
+        const uploadPermuted = await fetch("/api/upload-file", { method: "POST", body: formDataPermuted });
+        const resultPermuted = await uploadPermuted.json();
+        if (!resultPermuted.success) throw new Error("Permuted file upload failed");
 
-        // Generate slug from file1 name (remove extension)
-        const slug = tuple.file1!.name.replace(/\.[^/.]+$/, "");
-        uploadedFileTuples.push([slug, result1.filename, result2.filename]);
+        // Format: [sampleId, observedFile, permutedFile]
+        uploadedFileTuples.push([tuple.sampleId, resultObserved.filename, resultPermuted.filename]);
       }
 
       setLogs((prev) => [...prev, "Starting cell-cell interaction analysis..."]);
@@ -144,16 +154,26 @@ export default function CellCellInteractionAnalysis() {
         <form onSubmit={handleSubmit} className="mb-6">
           <div className="mb-6">
             <label className="block text-xs text-slate-400 mb-3 uppercase tracking-wider">
-              File Pairs (Observed / Permuted)
+              Sample Data (Sample ID, Observed File, Permuted File)
             </label>
 
             {fileTuples.map((tuple) => (
-              <div key={tuple.id} className="grid grid-cols-[1fr_1fr_auto] gap-3 mb-3 items-end">
+              <div key={tuple.id} className="grid grid-cols-[150px_1fr_1fr_auto] gap-3 mb-3 items-end">
+                <div>
+                  <input
+                    type="text"
+                    value={tuple.sampleId}
+                    onChange={(e) => updateSampleId(tuple.id, e.target.value)}
+                    placeholder="Sample ID"
+                    className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors"
+                  />
+                </div>
+
                 <div>
                   <input
                     type="file"
                     accept=".csv"
-                    onChange={(e) => updateFile1(tuple.id, e.target.files?.[0] || null)}
+                    onChange={(e) => updateObservedFile(tuple.id, e.target.files?.[0] || null)}
                     className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700"
                   />
                 </div>
@@ -162,7 +182,7 @@ export default function CellCellInteractionAnalysis() {
                   <input
                     type="file"
                     accept=".csv"
-                    onChange={(e) => updateFile2(tuple.id, e.target.files?.[0] || null)}
+                    onChange={(e) => updatePermutedFile(tuple.id, e.target.files?.[0] || null)}
                     className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700"
                   />
                 </div>
