@@ -59,6 +59,18 @@ export default function Home() {
               Analyze attribution matrix data
             </p>
           </Link>
+
+          <Link
+            href="/attraction-avoidance-heatmap"
+            className="block px-4 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 transition-colors"
+          >
+            <h2 className="text-sm font-medium text-slate-100">
+              Attraction-Avoidance Heatmap
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Generate hierarchically clustered heatmaps from permutation test results
+            </p>
+          </Link>
         </div>
       </div>
     </div>
