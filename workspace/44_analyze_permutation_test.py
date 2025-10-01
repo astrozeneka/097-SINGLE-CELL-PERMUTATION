@@ -41,6 +41,11 @@ file_pairs = {item[0]: (item[2], item[1]) for item in file_pairs}
 
 if __name__ == '__main__':
 
+    # Delete dir if it exists
+    if os.path.exists(args.output_dir):
+        shutil.rmtree(args.output_dir)
+    os.makedirs(args.output_dir, exist_ok=True)
+
     for sample, (permutation_file, observed_file) in file_pairs.items():
         print(f"Analyzing sample: {sample}")
         # Compute stats (means/median/p10/p90) for the observed file
@@ -104,9 +109,5 @@ if __name__ == '__main__':
                         "effect": effect
                     })
 
-        # Delete dir if it exists
-        if os.path.exists(args.output_dir):
-            shutil.rmtree(args.output_dir)
-        os.makedirs(args.output_dir, exist_ok=True)
         sample_attraction_repulsion = pd.DataFrame(sample_attraction_repulsion)
         sample_attraction_repulsion.to_csv(f"attraction_repulsion_results/{sample}_attraction_repulsion.csv", index=False)
