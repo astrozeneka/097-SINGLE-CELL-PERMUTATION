@@ -157,9 +157,12 @@ export default function CellCellInteractionAnalysis() {
               Sample Data (Sample ID, Observed File, Permuted File)
             </label>
 
-            {fileTuples.map((tuple) => (
-              <div key={tuple.id} className="grid grid-cols-[150px_1fr_1fr_auto] gap-3 mb-3 items-end">
+            {fileTuples.map((tuple, index) => (
+              <div key={tuple.id} className="grid grid-cols-[150px_1fr_1fr_auto] gap-3 mb-3">
                 <div>
+                  {index === 0 && (
+                    <label className="block text-xs text-slate-500 mb-1">Sample ID</label>
+                  )}
                   <input
                     type="text"
                     value={tuple.sampleId}
@@ -170,6 +173,9 @@ export default function CellCellInteractionAnalysis() {
                 </div>
 
                 <div>
+                  {index === 0 && (
+                    <label className="block text-xs text-slate-500 mb-1">Observed File</label>
+                  )}
                   <input
                     type="file"
                     accept=".csv"
@@ -179,6 +185,9 @@ export default function CellCellInteractionAnalysis() {
                 </div>
 
                 <div>
+                  {index === 0 && (
+                    <label className="block text-xs text-slate-500 mb-1">Permuted File</label>
+                  )}
                   <input
                     type="file"
                     accept=".csv"
@@ -187,14 +196,16 @@ export default function CellCellInteractionAnalysis() {
                   />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => removeFileTuple(tuple.id)}
-                  disabled={fileTuples.length === 1}
-                  className="px-3 py-1.5 bg-slate-800 text-slate-200 text-sm hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 disabled:cursor-not-allowed transition-colors"
-                >
-                  Delete
-                </button>
+                <div className="self-end">
+                  <button
+                    type="button"
+                    onClick={() => removeFileTuple(tuple.id)}
+                    disabled={fileTuples.length === 1}
+                    className="px-3 py-1.5 bg-slate-800 text-slate-200 text-sm hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             ))}
 
