@@ -2,7 +2,7 @@
 import os
 import argparse
 from glob import glob
-
+import shutil
 import pandas as pd
 
 parser = argparse.ArgumentParser(description="Analyze permutation test results")
@@ -106,7 +106,7 @@ if __name__ == '__main__':
 
         # Delete dir if it exists
         if os.path.exists(args.output_dir):
-            os.rmdir(args.output_dir)
+            shutil.rmtree(args.output_dir)
         os.makedirs(args.output_dir, exist_ok=True)
         sample_attraction_repulsion = pd.DataFrame(sample_attraction_repulsion)
         sample_attraction_repulsion.to_csv(f"attraction_repulsion_results/{sample}_attraction_repulsion.csv", index=False)
