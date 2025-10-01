@@ -125,6 +125,11 @@ if __name__ == '__main__':
     )
 
     # Prepare and save csv
+    adata.uns['spatial_distance'] = adata.uns['spatial_distance'].assign(
+        Phenotype=adata.obs['Phenotype'],
+    )
+    # Rename back phenotype column to match input
+    adata.uns['spatial_distance'] = adata.uns['spatial_distance'].rename(columns={'Phenotype': args.phenotype})
     adata.uns['spatial_distance'].to_csv(args.output)
     print("Output data saved to:", args.output)
     print("Done")
