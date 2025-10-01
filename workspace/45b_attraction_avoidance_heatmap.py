@@ -133,9 +133,21 @@ if __name__ == '__main__':
     os.makedirs(args.output_dir, exist_ok=True)
 
     gathered_df = None
-    file_list = glob(args.selector.strip('"'))
+
+    # Check if selector contains spaces (multiple files) or is a glob pattern
+    selector_stripped = args.selector.strip('"')
+    if ' ' in selector_stripped:
+        # Space-separated list of file paths
+        file_list = selector_stripped.split(' ')
+    else:
+        # Glob pattern
+        file_list = glob(selector_stripped)
+
+    print(f"Processing {len(file_list)} files...")
+
     # Step 1. Gather all data in a dataframe
     for file_path in file_list:
+        print(f"Reading file: {file_path}")
         # We don't consider the slug
         ar_df = pd.read_csv(file_path)
         for stat in ["mean"]: # Only the 'mean' statisitc is used
@@ -144,5 +156,8 @@ if __name__ == '__main__':
             gathered_df = pd.concat([gathered_df, subset]) if gathered_df is not None else subset
 
     # Step 2. Draw heatmaps for each statistic
-    draw_heatmap_v2(gathered_df)
+    if gathered_df is not None:
+        draw_heatmap_v2(gathered_df)
+    else:
+        print("ERROR: No data was gathered. Please check your input files.")
     print()
