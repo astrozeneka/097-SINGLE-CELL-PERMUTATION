@@ -11,12 +11,19 @@ export async function GET(request: NextRequest) {
       return Response.json({ error: 'filename parameter is required' }, { status: 400 });
     }
 
-    const filePath = path.join(process.cwd(), 'workspace', 'data', filename);
+    // Check if it's a zip file (in workspace root) or csv file (in data folder)
+    const isZipFile = filename.endsWith('.zip');
+    const filePath = isZipFile
+      ? path.join(process.cwd(), 'workspace', filename)
+      : path.join(process.cwd(), 'workspace', 'data', filename);
+
     const fileBuffer = await readFile(filePath);
+
+    const contentType = isZipFile ? 'application/zip' : 'text/csv';
 
     return new Response(fileBuffer, {
       headers: {
-        'Content-Type': 'text/csv',
+        'Content-Type': contentType,
         'Content-Disposition': `attachment; filename="${filename}"`,
       },
     });
