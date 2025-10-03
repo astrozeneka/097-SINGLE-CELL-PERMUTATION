@@ -110,4 +110,4 @@ if __name__ == '__main__':
                     })
 
         sample_attraction_repulsion = pd.DataFrame(sample_attraction_repulsion)
-        sample_attraction_repulsion.to_csv(f"attraction_repulsion_results/{sample}_attraction_repulsion.csv", index=False)
+        sample_attraction_repulsion.to_csv(f"{args.output_dir}/{sample}_attraction_repulsion.csv", index=False)
