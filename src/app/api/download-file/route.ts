@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     const contentType = isZipFile ? 'application/zip' : 'text/csv';
 
-    return new Response(fileBuffer, {
+    return new Response(new Uint8Array(fileBuffer), {
       headers: {
         'Content-Type': contentType,
         'Content-Disposition': `attachment; filename="${filename}"`,
