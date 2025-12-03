@@ -9,11 +9,14 @@ from scipy import stats
 from itertools import combinations
 
 from matplotlib import pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 import seaborn as sns
 
 parser = argparse.ArgumentParser(description="Analyze permutation test results")
 parser.add_argument('--selector', type=str, default='larc-samples/attraction_repulsion_results/*.csv')
 parser.add_argument("--output-dir", type=str, default="attraction_repulsion_heatmaps_larc", help="Output directory for plots")
+# Plotting options
+parser.add_argument('--display-digits', action='store_true', help="Whether to display digits in heatmap cells")
 args = parser.parse_args()
 
 def draw_heatmap_v2(df):
@@ -73,6 +76,13 @@ def draw_heatmap_v2(df):
             # Fill NaN values with 0
             heatmap_data = heatmap_data.fillna(0)
 
+            # Calculate max absolute value for symmetric colorscale
+            max_abs_value = np.abs(heatmap_data.values).max()
+
+            # Create custom diverging colormap
+            custom_cmap = LinearSegmentedColormap.from_list('custom_diverging',
+                                                             ['#c63461', '#ffffff', '#4287de'])
+
             # Pre-compute linkage matrix for synchronized clustering
             from scipy.cluster.hierarchy import linkage
             from scipy.spatial.distance import pdist
@@ -89,22 +99,30 @@ def draw_heatmap_v2(df):
                                col_linkage=linkage_matrix,
 
                                # Visual parameters
-                               cmap='RdBu_r',  # Blue/white/red colormap
+                               cmap=custom_cmap,  # Custom pink/white/blue colormap
                                center=0,  # Center white at zero
-                               annot=True,  # Show p-value values
-                               fmt='.2f',  # Two decimal places
+                               vmin=-max_abs_value,  # Symmetric minimum
+                               vmax=max_abs_value,   # Symmetric maximum
+                               annot=args.display_digits,  # Show/hide cell values based on flag
+                               fmt='.2f' if args.display_digits else '',  # Two decimal places if showing
 
                                # Layout parameters
                                figsize=(12, 10),
-                               dendrogram_ratio=(0.15, 0.15),  # Size of dendrograms
+                               row_cluster=True,  # Keep clustering
+                               col_cluster=True,  # Keep clustering
                                linewidths=0.5,  # Grid lines between cells
 
                                # Color bar
-                               cbar_kws={'label': 'Conditional log₁₀(p-value)'})
+                               cbar_kws={'label': 'Conditional log₁₀(p-value)'} if args.display_digits else {}
+                               )
+
+            # Hide dendrogram axes but keep clustering
+            g.ax_row_dendrogram.set_visible(False)
+            g.ax_col_dendrogram.set_visible(False)
 
             # Customize labels and title
-            title = f'Hierarchically Clustered Statistical Significance: {group1} vs {group2}'
-            g.fig.suptitle(title, y=0.98, fontsize=14, fontweight='bold')
+            title = f'Heatmap of pairwise cell-cell interactions (red) or avoidances (blue)'
+            g.fig.suptitle(title, y=0.95, fontsize=14, fontweight='bold')
 
             # Format tick labels
             plt.setp(g.ax_heatmap.get_xticklabels(), rotation=45, ha='right', fontsize=11.88)
@@ -119,6 +137,15 @@ def draw_heatmap_v2(df):
             # Add axis labels
             g.ax_heatmap.set_xlabel('Target Phenotype', fontsize=11, fontweight='bold')
             g.ax_heatmap.set_ylabel('Source Phenotype', fontsize=11, fontweight='bold')
+
+            # Add "Interaction" and "Avoidance" labels to colorbar
+            cbar = g.ax_cbar
+            if not args.display_digits:
+                cbar.set_yticks([])  # Hide colorbar ticks when not displaying digits
+            cbar.text(0.5, 1.05, 'Interaction', ha='center', va='bottom',
+                     transform=cbar.transAxes, fontsize=10, fontweight='bold')
+            cbar.text(0.5, -0.05, 'Avoidance', ha='center', va='top',
+                     transform=cbar.transAxes, fontsize=10, fontweight='bold')
 
             # Save the plot
             os.makedirs(args.output_dir, exist_ok=True)
