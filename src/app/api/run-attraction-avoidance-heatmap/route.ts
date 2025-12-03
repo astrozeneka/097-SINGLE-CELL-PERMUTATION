@@ -7,6 +7,7 @@ const execAsync = promisify(exec);
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const filenamesParam = searchParams.get('filenames');
+  const displayDigitsParam = searchParams.get('displayDigits');
 
   if (!filenamesParam) {
     return Response.json({ error: 'filenames parameter is required' }, { status: 400 });
@@ -33,6 +34,10 @@ export async function GET(request: Request) {
         "--selector", selector,
         "--output-dir", outputDir
       ];
+
+      if (displayDigitsParam === 'true') {
+        args.push('--display-digits');
+      }
 
       const childProcess = spawn(pythonPath, ['-u', scriptPath, ...args], {
         cwd: 'workspace',

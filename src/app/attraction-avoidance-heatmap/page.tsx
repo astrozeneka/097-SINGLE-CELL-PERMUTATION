@@ -15,6 +15,7 @@ export default function AttractionAvoidanceHeatmap() {
   const [logs, setLogs] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [zipFilename, setZipFilename] = useState<string | null>(null);
+  const [displayDigits, setDisplayDigits] = useState(false);
 
   const addFileItem = () => {
     setFileItems([...fileItems, { id: nextId, file: null }]);
@@ -67,7 +68,8 @@ export default function AttractionAvoidanceHeatmap() {
 
       // Run analysis with SSE
       const params = new URLSearchParams({
-        filenames: JSON.stringify(uploadedFilenames)
+        filenames: JSON.stringify(uploadedFilenames),
+        displayDigits: displayDigits.toString()
       });
       const eventSource = new EventSource(`/api/run-attraction-avoidance-heatmap?${params.toString()}`);
 
@@ -162,6 +164,18 @@ export default function AttractionAvoidanceHeatmap() {
             >
               Add
             </button>
+          </div>
+
+          <div className="mb-6">
+            <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={displayDigits}
+                onChange={(e) => setDisplayDigits(e.target.checked)}
+                className="w-4 h-4 bg-slate-900 border-slate-700 focus:ring-slate-500"
+              />
+              Display digits in heatmap cells
+            </label>
           </div>
 
           <div className="flex justify-end">
