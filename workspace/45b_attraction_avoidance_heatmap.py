@@ -121,7 +121,7 @@ def draw_heatmap_v2(df):
             g.ax_col_dendrogram.set_visible(False)
 
             # Customize labels and title
-            title = f'Heatmap of pairwise cell-cell interactions (red) or avoidances (blue)'
+            title = f'Heatmap of pairwise cell-cell interactions (blue) or avoidances (red)'
             g.fig.suptitle(title, y=0.95, fontsize=14, fontweight='bold')
 
             # Format tick labels
