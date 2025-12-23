@@ -1,6 +1,7 @@
 import { writeFile, mkdir } from 'fs/promises';
 import { NextRequest } from 'next/server';
 import path from 'path';
+import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,14 +18,19 @@ export async function POST(request: NextRequest) {
     const uploadDir = path.join(process.cwd(), 'workspace', 'data');
     await mkdir(uploadDir, { recursive: true });
 
-    const filePath = path.join(uploadDir, file.name);
+    const ext = path.extname(file.name);
+    const nameWithoutExt = path.basename(file.name, ext);
+    const randomValue = crypto.randomBytes(4).toString('hex');
+    const newFilename = `${nameWithoutExt}_${randomValue}${ext}`;
+
+    const filePath = path.join(uploadDir, newFilename);
     await writeFile(filePath, buffer);
 
-    const relativePath = path.join('data', file.name);
+    const relativePath = path.join('data', newFilename);
 
     return Response.json({
       success: true,
-      filename: file.name,
+      filename: newFilename,
       path: relativePath
     });
   } catch (error: any) {
