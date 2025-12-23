@@ -148,11 +148,11 @@ export default function NeighborhoodPage() {
                     {method === "radius" && (
                         <div>
                             <label className="block text-xs text-slate-400 mb-1.5 uppercase tracking-wider">
-                                Radius
+                                Radius (px) - <span className="text-red-500">make sure to properly convert micrometers to pixels if needed</span>
                             </label>
                             <input
                                 type="number"
-                                step="0.1"
+                                step="5"
                                 value={radius}
                                 onChange={(e) => setRadius(parseFloat(e.target.value))}
                                 className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors"
