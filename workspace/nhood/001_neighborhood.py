@@ -13,6 +13,7 @@ parser.add_argument('--knn-count', type=int, default=20)
 args = parser.parse_args()
 
 if __name__ == '__main__':
+    df = pd.read_csv(args.input)
     
     all_adata = df2adata(
         df,
