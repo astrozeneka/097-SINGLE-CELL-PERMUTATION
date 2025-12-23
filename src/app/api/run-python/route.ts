@@ -3,8 +3,8 @@ import { spawn } from 'child_process';
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
 
-    // const pythonPath = "/mnt/sisplockers/jantappapac/Ryan/conda/scimap/bin/python";
-    const pythonPath = "D:/Ryan/126-NHOOD-WSA/.venv/Scripts/python.exe";
+    const pythonPath = "/mnt/sisplockers/jantappapac/Ryan/conda/scimap/bin/python";
+    // const pythonPath = "D:/Ryan/126-NHOOD-WSA/.venv/Scripts/python.exe";
     const scriptPath = searchParams.get('script');
 
     if (!scriptPath) {
@@ -29,14 +29,7 @@ export async function GET(request: Request) {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
         start(controller) {
-            // Send acknowledgment
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                type: 'acknowledgment',
-                status: 'processing',
-                message: 'Script started'
-            })}\n\n`));
-
-            const childProcess = spawn(pythonPath, ['-u', scriptPath, ...args], {
+            const childProcess = spawn(pythonPath, args, {
                 cwd: 'workspace',
                 env: { ...process.env, PYTHONUNBUFFERED: '1' }
             });
