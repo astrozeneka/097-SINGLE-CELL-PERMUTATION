@@ -2,7 +2,7 @@ import argparse
 import pandas as pd
 
 from utils import df2adata
-# import scimap as sm
+import scimap as sm
 import os
 
 
