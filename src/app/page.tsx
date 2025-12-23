@@ -13,6 +13,18 @@ export default function Home() {
 
         <div className="grid gap-2">
           <Link
+            href="/neighborhood"
+            className="block px-4 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 transition-colors"
+          >
+            <h2 className="text-sm font-medium text-slate-100">
+              (Nhood: Step 1): Compute cellular neighborhood
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Define neighborhood using KNN or radius method
+            </p>
+          </Link>
+
+          <Link
             href="/attribution-matrix"
             className="block px-4 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 transition-colors"
           >

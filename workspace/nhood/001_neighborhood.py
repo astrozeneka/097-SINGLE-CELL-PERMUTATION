@@ -9,12 +9,14 @@ import os
 parser = argparse.ArgumentParser(description="Filter neighborhood data based on classification sets")
 parser.add_argument('--input', type=str, required=True, help="Merged CSV data file")
 parser.add_argument('--output', type=str, required=True, help="Output CSV file")
+parser.add_argument("--method", type=str, default="knn", choices=["knn", "radius"])
 parser.add_argument('--knn-count', type=int, default=20)
+parser.add_argument('--radius', type=float, default=50.0)
 args = parser.parse_args()
 
 if __name__ == '__main__':
     df = pd.read_csv(args.input)
-    
+
     all_adata = df2adata(
         df,
         imageid="imageid",
@@ -22,12 +24,22 @@ if __name__ == '__main__':
     )
 
     print("Defining neighborhood counts with k =", args.knn_count)
-    all_adata = sm.tl.spatial_count(
-        all_adata,
-        phenotype="Phenotype",
-        method="knn",
-        knn=args.knn_count
-    )
+    if args.method == "radius":
+        print("Using radius method with radius =", args.radius)
+        all_adata = sm.tl.spatial_count(
+            all_adata,
+            phenotype="Phenotype",
+            method="radius",
+            radius=args.radius
+        )
+    elif args.method == "knn":
+        print("Using knn method with knn =", args.knn_count)
+        all_adata = sm.tl.spatial_count(
+            all_adata,
+            phenotype="Phenotype",
+            method="knn",
+            knn=args.knn_count
+        )
 
     # Merge datas with same index (all_adata.uns['spatial_count'] and all_adata.obs[["Phenotype"]])
     spatial_count_df = all_adata.uns['spatial_count']

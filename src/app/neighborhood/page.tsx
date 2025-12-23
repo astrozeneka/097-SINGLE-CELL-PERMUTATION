@@ -7,6 +7,9 @@ export default function NeighborhoodPage() {
     const [logs, setLogs] = useState<string[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [outputFilename, setOutputFilename] = useState<string | null>(null);
+    const [method, setMethod] = useState<string>("knn");
+    const [knnCount, setKnnCount] = useState<number>(20);
+    const [radius, setRadius] = useState<number>(50.0);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -44,7 +47,9 @@ export default function NeighborhoodPage() {
                 input: `data/${uploadResult.filename}`,
                 output: `data/${outputName}`,
                 script: "nhood/001_neighborhood.py",
-                "knn-count": "20"
+                method: method,
+                ...(method === "knn" && { "knn-count": knnCount.toString() }),
+                ...(method === "radius" && { radius: radius.toString() })
             });
             const eventSource = new EventSource(`/api/run-python?${params.toString()}`);
 
@@ -111,6 +116,49 @@ export default function NeighborhoodPage() {
                             className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700"
                         />
                     </div>
+
+                    <div>
+                        <label className="block text-xs text-slate-400 mb-1.5 uppercase tracking-wider">
+                            Method
+                        </label>
+                        <select
+                            value={method}
+                            onChange={(e) => setMethod(e.target.value)}
+                            className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors"
+                        >
+                            <option value="knn">KNN</option>
+                            <option value="radius">Radius</option>
+                        </select>
+                    </div>
+
+                    {method === "knn" && (
+                        <div>
+                            <label className="block text-xs text-slate-400 mb-1.5 uppercase tracking-wider">
+                                KNN Count
+                            </label>
+                            <input
+                                type="number"
+                                value={knnCount}
+                                onChange={(e) => setKnnCount(parseInt(e.target.value))}
+                                className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors"
+                            />
+                        </div>
+                    )}
+
+                    {method === "radius" && (
+                        <div>
+                            <label className="block text-xs text-slate-400 mb-1.5 uppercase tracking-wider">
+                                Radius
+                            </label>
+                            <input
+                                type="number"
+                                step="0.1"
+                                value={radius}
+                                onChange={(e) => setRadius(parseFloat(e.target.value))}
+                                className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors"
+                            />
+                        </div>
+                    )}
 
                     <button
                         type="submit"
