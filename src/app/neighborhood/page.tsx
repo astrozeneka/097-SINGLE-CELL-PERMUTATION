@@ -60,7 +60,7 @@ export default function NeighborhoodPage() {
                 } else if (data.type === "complete") {
                     setLogs((prev) => [...prev, `Process completed with exit code: ${data.exitCode}`]);
                     if (data.exitCode === 0 && data.outputFilename) {
-                        setOutputFilename(data.outputFilename);
+                        setOutputFilename(data.outputFilename.replace('data/', ''));
                     }
                     eventSource.close();
                     setIsProcessing(false);
