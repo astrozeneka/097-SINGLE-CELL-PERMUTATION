@@ -59,7 +59,7 @@ export default function NeighborhoodPage() {
                     setLogs((prev) => [...prev, `ERROR: ${data.content}`]);
                 } else if (data.type === "complete") {
                     setLogs((prev) => [...prev, `Process completed with exit code: ${data.exitCode}`]);
-                    if (data.outputFilename) {
+                    if (data.exitCode === 0 && data.outputFilename) {
                         setOutputFilename(data.outputFilename);
                     }
                     eventSource.close();

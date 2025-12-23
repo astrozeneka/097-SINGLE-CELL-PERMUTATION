@@ -22,7 +22,6 @@ if __name__ == '__main__':
     )
 
     print("Defining neighborhood counts with k =", args.knn_count)
-    exit(22)
     all_adata = sm.tl.spatial_count(
         all_adata,
         phenotype="Phenotype",
