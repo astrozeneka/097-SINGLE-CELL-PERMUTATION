@@ -107,7 +107,7 @@ export default function NeighborhoodPage() {
                 <header className="mb-6">
                     <div className="flex items-center gap-4">
                         <h1 className="text-2xl font-light text-slate-100 tracking-wide">
-                            Neighborhood Analysis
+                            Neighborhood Analysis (Step 2): Compute neighborhood
                         </h1>
                         {isProcessing && (
                             <span className="text-xs text-red-400 font-medium uppercase tracking-wider animate-pulse">

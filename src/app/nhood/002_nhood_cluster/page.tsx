@@ -53,6 +53,7 @@ export default function NHoodClusterPage() {
             const params = new URLSearchParams({
                 input: `data/${uploadResult.filename}`,
                 output: `data/${outputName}`,
+                script: "nhood/002_cluster_motifs_v1.py",
                 n_motifs: nMotifs.toString(),
                 knn_seed: knnSeed.toString(),
             });
@@ -112,7 +113,7 @@ export default function NHoodClusterPage() {
                 <header className="mb-6">
                     <div className="flex items-center gap-4">
                         <h1 className="text-2xl font-light text-slate-100 tracking-wide">
-                            Neighborhood Analysis
+                            Neighborhood Analysis (Step 2): Clustering
                         </h1>
                         {isProcessing && (
                             <span className="text-xs text-red-400 font-medium uppercase tracking-wider animate-pulse">
