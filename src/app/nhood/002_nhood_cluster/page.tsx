@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { LogDisplay, LogDisplayHandle } from "../components/log-display";
 
 
@@ -111,9 +112,15 @@ export default function NHoodClusterPage() {
         <div className="min-h-screen bg-slate-950 text-slate-100 p-6">
             <div className="max-w-5xl mx-auto">
                 <header className="mb-6">
+                    <Link
+                        href="/"
+                        className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-slate-300 transition-colors mb-4"
+                    >
+                        ← Back to home
+                    </Link>
                     <div className="flex items-center gap-4">
                         <h1 className="text-2xl font-light text-slate-100 tracking-wide">
-                            Neighborhood Analysis (Step 2): Clustering
+                            Neighborhood Analysis (Step 2): Cluster motifs
                         </h1>
                         {isProcessing && (
                             <span className="text-xs text-red-400 font-medium uppercase tracking-wider animate-pulse">
