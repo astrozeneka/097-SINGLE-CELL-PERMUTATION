@@ -55,7 +55,7 @@ export default function NHoodClusterPage() {
                 n_motifs: nMotifs.toString(),
                 knn_seed: knnSeed.toString(),
             });
-            const eventSource = new EventSource(`/api/run-nhood-cluster?${params.toString()}`);
+            const eventSource = new EventSource(`/api/run-python?${params.toString()}`);
             eventSource.onmessage = (event) => {
                 const data = JSON.parse(event.data);
 
