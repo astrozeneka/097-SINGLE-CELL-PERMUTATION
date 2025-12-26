@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { LogDisplay, LogDisplayHandle } from "../components/log-display";
 
 
@@ -9,6 +9,7 @@ export default function NHoodClusterPage() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [outputFilename, setOutputFilename] = useState<string | null>(null);
     const logRef = useRef<LogDisplayHandle>(null);
+    const eventSourceRef = useRef<EventSource | null>(null);
 
     // The parameters for the submission
     const [nMotifs, setNMotifs] = useState(20);
@@ -56,6 +57,8 @@ export default function NHoodClusterPage() {
                 knn_seed: knnSeed.toString(),
             });
             const eventSource = new EventSource(`/api/run-python?${params.toString()}`);
+            eventSourceRef.current = eventSource;
+
             eventSource.onmessage = (event) => {
                 const data = JSON.parse(event.data);
 
@@ -71,27 +74,37 @@ export default function NHoodClusterPage() {
                         setOutputFilename(data.outputFilename.replace('data/', ''));
                     }
                     eventSource.close();
+                    eventSourceRef.current = null;
                     setIsProcessing(false);
                 } else if (data.type === "error") {
                     logRef.current?.pushLog(`ERROR: ${data.message}`);
                     eventSource.close();
+                    eventSourceRef.current = null;
                     setIsProcessing(false);
                 }
             };
             eventSource.onerror = () => {
                 logRef.current?.pushLog("Connection error");
                 eventSource.close();
+                eventSourceRef.current = null;
                 setIsProcessing(false);
             };
 
         } catch (error: any) {
             logRef.current?.pushLog(`Error: ${error.message}`);
             setIsProcessing(false);
-        } finally {
-            setIsProcessing(false);
         }
 
     }
+
+    useEffect(() => {
+        return () => {
+            if (eventSourceRef.current) {
+                eventSourceRef.current.close();
+                eventSourceRef.current = null;
+            }
+        };
+    }, []);
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 p-6">
@@ -112,9 +125,18 @@ export default function NHoodClusterPage() {
 
                 <form onSubmit={handleSubmit} className="mb-6 space-y-4">
                     <div>
-                        <label className="block text-xs text-slate-400 mb-1.5 uppercase tracking-wider">
-                            Input File
-                        </label>
+                        <div className="flex justify-between items-center mb-1.5">
+                            <label className="text-xs text-slate-400 uppercase tracking-wider">
+                                Input File
+                            </label>
+                            <a
+                                href="/sample-datas/nhood-cluster-input-data.csv"
+                                download
+                                className="text-xs text-teal-400 hover:text-teal-300 transition-colors"
+                            >
+                                ↓ Download sample input
+                            </a>
+                        </div>
                         <input
                             type="file"
                             accept=".csv"
