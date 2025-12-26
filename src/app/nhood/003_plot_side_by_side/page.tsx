@@ -129,13 +129,13 @@ export default function NHoodPlotSideBySide() {
                             <label className="text-xs text-slate-400 uppercase tracking-wider">
                                 Input File
                             </label>
-                            <a
+                            {/*<a
                                 href="/sample-datas/nhood-cluster-input-data.csv"
                                 download
                                 className="text-xs text-teal-400 hover:text-teal-300 transition-colors"
                             >
                                 ↓ Download sample input
-                            </a>
+                            </a>*/}
                         </div>
                         <input
                             type="file"
