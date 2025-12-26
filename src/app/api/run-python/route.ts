@@ -29,47 +29,62 @@ export async function GET(request: Request) {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
         start(controller) {
+            let isClosed = false;
+
+            const safeEnqueue = (data: Uint8Array) => {
+                if (!isClosed) {
+                    controller.enqueue(data);
+                }
+            };
+
+            const safeClose = () => {
+                if (!isClosed) {
+                    isClosed = true;
+                    controller.close();
+                }
+            };
+
             const childProcess = spawn(pythonPath, args, {
                 cwd: 'workspace',
                 env: { ...process.env, PYTHONUNBUFFERED: '1' }
             });
 
             // Send acknowledgment
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                 type: 'acknowledgment',
                 status: 'processing',
                 message: 'Script started'
             })}\n\n`));
 
             childProcess.stdout.on('data', (data) => {
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                     type: 'stdout',
                     content: data.toString()
                 })}\n\n`));
             });
 
             childProcess.stderr.on('data', (data) => {
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                     type: 'stderr',
                     content: data.toString()
                 })}\n\n`));
             });
 
             childProcess.on('close', (code) => {
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                     type: 'complete',
                     exitCode: code,
                     outputFilename: outputFilename
                 })}\n\n`));
-                controller.close();
+                safeClose();
             });
 
             childProcess.on('error', (error) => {
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                     type: 'error',
                     message: error.message
                 })}\n\n`));
-                controller.close();
+                safeClose();
             });
         }
     });
