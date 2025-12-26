@@ -152,7 +152,7 @@ export default function NHoodClusterPage() {
                         disabled={isProcessing}
                         className="px-5 py-1.5 bg-slate-800 text-slate-200 text-sm hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 disabled:cursor-not-allowed transition-colors"
                     >
-                        {isProcessing ? "Running..." : "Generate"}
+                        {isProcessing ? "Running..." : "Run"}
                     </button>
                 </form>
 
