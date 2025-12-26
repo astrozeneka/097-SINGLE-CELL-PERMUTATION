@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useRef, useEffect } from "react";
 
 export default function NeighborhoodPage() {
     const [file, setFile] = useState<File | null>(null);
@@ -10,6 +10,7 @@ export default function NeighborhoodPage() {
     const [method, setMethod] = useState<string>("knn");
     const [knnCount, setKnnCount] = useState<number>(20);
     const [radius, setRadius] = useState<number>(50.0);
+    const eventSourceRef = useRef<EventSource | null>(null);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -52,6 +53,7 @@ export default function NeighborhoodPage() {
                 ...(method === "radius" && { radius: radius.toString() })
             });
             const eventSource = new EventSource(`/api/run-python?${params.toString()}`);
+            eventSourceRef.current = eventSource;
 
             eventSource.onmessage = (event) => {
                 const data = JSON.parse(event.data);
@@ -68,10 +70,12 @@ export default function NeighborhoodPage() {
                         setOutputFilename(data.outputFilename.replace('data/', ''));
                     }
                     eventSource.close();
+                    eventSourceRef.current = null;
                     setIsProcessing(false);
                 } else if (data.type === "error") {
                     setLogs((prev) => [...prev, `ERROR: ${data.message}`]);
                     eventSource.close();
+                    eventSourceRef.current = null;
                     setIsProcessing(false);
                 }
             };
@@ -79,6 +83,7 @@ export default function NeighborhoodPage() {
             eventSource.onerror = () => {
                 setLogs((prev) => [...prev, "Connection error"]);
                 eventSource.close();
+                eventSourceRef.current = null;
                 setIsProcessing(false);
             };
         } catch (error: any) {
@@ -86,6 +91,15 @@ export default function NeighborhoodPage() {
             setIsProcessing(false);
         }
     };
+
+    useEffect(() => {
+        return () => {
+            if (eventSourceRef.current) {
+                eventSourceRef.current.close();
+                eventSourceRef.current = null;
+            }
+        };
+    }, []);
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 p-6">
@@ -106,9 +120,18 @@ export default function NeighborhoodPage() {
 
                 <form onSubmit={handleSubmit} className="mb-6 space-y-4">
                     <div>
-                        <label className="block text-xs text-slate-400 mb-1.5 uppercase tracking-wider">
-                            Input File
-                        </label>
+                        <div className="flex justify-between items-center mb-1.5">
+                            <label className="text-xs text-slate-400 uppercase tracking-wider">
+                                Input File
+                            </label>
+                            <a
+                                href="/sample-datas/nhood-input-data.csv"
+                                download
+                                className="text-xs text-teal-400 hover:text-teal-300 transition-colors"
+                            >
+                                ↓ Download sample input
+                            </a>
+                        </div>
                         <input
                             type="file"
                             accept=".csv"
@@ -165,7 +188,7 @@ export default function NeighborhoodPage() {
                         disabled={isProcessing}
                         className="px-5 py-1.5 bg-slate-800 text-slate-200 text-sm hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 disabled:cursor-not-allowed transition-colors"
                     >
-                        {isProcessing ? "Running..." : "Generate"}
+                        {isProcessing ? "Running..." : "Run"}
                     </button>
                 </form>
 
