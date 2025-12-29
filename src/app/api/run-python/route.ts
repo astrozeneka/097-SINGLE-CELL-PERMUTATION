@@ -44,7 +44,7 @@ export async function GET(request: Request) {
             };
 
             const childProcess = spawn(pythonPath, args, {
-                cwd: 'workspace',
+                cwd: '/mnt/sisplockers/ryanr/144-ANALYSIS-PLATFORM/workspace',
                 env: { ...process.env, PYTHONUNBUFFERED: '1' }
             });
 
