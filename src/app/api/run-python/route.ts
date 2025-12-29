@@ -18,6 +18,7 @@ export async function GET(request: Request) {
     });
     args = ['-u', scriptPath, ...args];
 
+
     // The output file name if any
     let outputFilename: string | null = null;
     if (searchParams.get('output')) {
@@ -43,6 +44,7 @@ export async function GET(request: Request) {
                 }
             };
 
+            console.log('Spawning process:', pythonPath, args.join(' '));
             const childProcess = spawn(pythonPath, args, {
                 cwd: 'workspace',
                 env: { ...process.env, PYTHONUNBUFFERED: '1' }
