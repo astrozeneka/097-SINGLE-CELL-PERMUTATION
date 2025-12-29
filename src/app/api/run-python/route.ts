@@ -3,8 +3,7 @@ import { spawn } from 'child_process';
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
 
-    const pythonPath = "/mnt/sisplockers/jantappapac/Ryan/conda/scimap/bin/python";
-    // const pythonPath = "D:/Ryan/126-NHOOD-WSA/.venv/Scripts/python.exe";
+    const pythonPath = process.env.PYTHON_PATH || "/mnt/sisplockers/ryanr/miniconda3/envs/scimap/bin/python";
     const scriptPath = searchParams.get('script');
 
     if (!scriptPath) {
