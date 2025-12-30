@@ -6,7 +6,6 @@ import os
 import pandas as pd
 from matplotlib.colors import LinearSegmentedColormap
 
-from utils import load_patients_df
 import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.stats import zscore
