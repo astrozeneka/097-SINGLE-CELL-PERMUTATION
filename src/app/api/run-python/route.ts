@@ -44,7 +44,7 @@ export async function GET(request: Request) {
                 }
             };
 
-            const childProcess = spawn('conda', ['run', '-n', condaEnv, 'python', ...args], {
+            const childProcess = spawn('/mnt/sisplockers/ryanr/miniconda3/condabin/conda', ['run', '-n', condaEnv, 'python', ...args], {
                 cwd: 'workspace',
                 env: { ...process.env, PYTHONUNBUFFERED: '1' }
             });
