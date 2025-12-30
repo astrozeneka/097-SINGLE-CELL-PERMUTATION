@@ -55,8 +55,8 @@ export default function NHoodClusterPage() {
                 input: `data/${uploadResult.filename}`,
                 output: `data/${outputName}`,
                 script: "nhood/002_cluster_motifs_v1.py",
-                n_motifs: nMotifs.toString(),
-                knn_seed: knnSeed.toString(),
+                "n-motifs": nMotifs.toString(),
+                "knn-seed": knnSeed.toString(),
             });
             const eventSource = new EventSource(`/api/run-python?${params.toString()}`);
             eventSourceRef.current = eventSource;
