@@ -44,14 +44,8 @@ export async function GET(request: Request) {
                 }
             };
 
-<<<<<<< HEAD
-            console.log('Spawning process:', pythonPath, args.join(' '));
-            const childProcess = spawn(pythonPath, args, {
-                cwd: '/mnt/sisplockers/ryanr/144-ANALYSIS-PLATFORM/workspace',
-=======
             const childProcess = spawn('conda', ['run', '-n', condaEnv, 'python', ...args], {
                 cwd: 'workspace',
->>>>>>> 221d754e4ff40e5b93788667dcc115d1e29f3292
                 env: { ...process.env, PYTHONUNBUFFERED: '1' }
             });
 
