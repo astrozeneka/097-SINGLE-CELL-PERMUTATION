@@ -3,7 +3,6 @@ import { spawn } from 'child_process';
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
 
-    const condaEnv = process.env.CONDA_ENV || 'scimap';
     const scriptPath = searchParams.get('script');
 
     if (!scriptPath) {
@@ -44,7 +43,7 @@ export async function GET(request: Request) {
                 }
             };
 
-            const childProcess = spawn('/mnt/sisplockers/ryanr/miniconda3/condabin/conda', ['run', '-n', condaEnv, 'python', ...args], {
+            const childProcess = spawn('python', args, {
                 cwd: 'workspace',
                 env: { ...process.env, PYTHONUNBUFFERED: '1' }
             });

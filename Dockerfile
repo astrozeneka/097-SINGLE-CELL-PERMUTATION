@@ -1,6 +1,13 @@
-FROM node:24.9.0-alpine
+# Use an image with both Python and Node.js
+FROM nikolaik/python-nodejs:python3.11-nodejs24
 
 WORKDIR /app
+
+# Copy Python requirements first for better layer caching
+COPY requirements.txt ./
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy package files
 COPY package*.json ./
