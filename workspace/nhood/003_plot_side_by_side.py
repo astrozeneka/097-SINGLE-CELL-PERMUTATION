@@ -8,6 +8,7 @@ from plot_utils import create_combined_plot_v2_without_group
 parser = argparse.ArgumentParser(description="Visualize neighborhood content")
 parser.add_argument('--input', type=str, required=True, help="Input stacked neighborhood interaction CSV file including the motif information")
 parser.add_argument("--output", type=str, required=True, help="Output figure file name")
+parser.add_argument("--fig-width", type=float, default=12, help="Figure width")
 args = parser.parse_args()
 
 if __name__ == '__main__':
@@ -51,5 +52,5 @@ if __name__ == '__main__':
         m=None,
         mode='raw',
         prepare_motif_labels=True,
-        fig_width=12
+        fig_width=args.fig_width
     )
