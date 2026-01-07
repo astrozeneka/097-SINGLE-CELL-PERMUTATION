@@ -23,6 +23,12 @@ args = parser.parse_args()
 if __name__ == '__main__':
     df = pd.read_csv(args.input)
 
+    # patch the coordinates
+    df.rename({
+        args.x_coord_column: 'X_centroid',
+        args.y_coord_column: 'Y_centroid'
+    }, axis=1, inplace=True)
+
     all_adata = df2adata(
         df,
         imageid=args.imageid_column,
