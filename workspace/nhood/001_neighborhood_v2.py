@@ -25,8 +25,8 @@ if __name__ == '__main__':
 
     # patch the coordinates
     df.rename({
-        args.x_coord_column: 'X_centroid',
-        args.y_coord_column: 'Y_centroid'
+        args.x_coord_column: 'Centroid X',
+        args.y_coord_column: 'Centroid Y'
     }, axis=1, inplace=True)
 
     all_adata = df2adata(

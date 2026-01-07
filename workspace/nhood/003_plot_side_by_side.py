@@ -48,7 +48,7 @@ if __name__ == '__main__':
         motif_association_df=None,
         per_motif_composition=per_motif_composition,
         outfile=args.output,
-        treatment='Test',
+        treatment='All',
         m=None,
         mode='raw',
         prepare_motif_labels=True,
