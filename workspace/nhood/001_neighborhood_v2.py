@@ -26,13 +26,15 @@ if __name__ == '__main__':
     # patch the coordinates
     df.rename({
         args.x_coord_column: 'Centroid X',
-        args.y_coord_column: 'Centroid Y'
+        args.y_coord_column: 'Centroid Y',
+        args.phenotype_column: 'Phenotype',
+        args.imageid_column: 'imageid'
     }, axis=1, inplace=True)
 
     all_adata = df2adata(
         df,
-        imageid=args.imageid_column,
-        additional_cols=[args.phenotype_column],
+        imageid='imageid',
+        additional_cols=['Phenotype'],
     )
 
     print("Defining neighborhood counts with k =", args.knn_count)
