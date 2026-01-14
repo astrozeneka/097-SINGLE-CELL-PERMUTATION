@@ -23,6 +23,9 @@ args = parser.parse_args()
 if __name__ == '__main__':
     df = pd.read_csv(args.input)
 
+    # print provided options
+    print(f"Provided options: " + " ".join([f"{k}={v}" for k, v in vars(args).items()]))
+
     # patch the coordinates
     df.rename({
         args.x_coord_column: 'Centroid X',
