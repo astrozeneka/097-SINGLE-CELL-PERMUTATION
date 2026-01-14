@@ -30,7 +30,7 @@ if __name__ == '__main__':
     df.rename({
         args.x_coord_column: 'Centroid X',
         args.y_coord_column: 'Centroid Y',
-        args.phenotype_column: 'Phenotype',
+        # args.phenotype_column: args.phenotype_column,
         args.imageid_column: 'imageid'
     }, axis=1, inplace=True)
 
