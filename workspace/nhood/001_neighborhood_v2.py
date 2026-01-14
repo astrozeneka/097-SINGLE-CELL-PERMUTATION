@@ -60,7 +60,7 @@ if __name__ == '__main__':
 
     # Merge datas with same index (all_adata.uns['spatial_count'] and all_adata.obs[["Phenotype"]])
     spatial_count_df = all_adata.uns['spatial_count']
-    phenotype_df = all_adata.obs[[args.phenotype_column, args.imageid_column]]
+    phenotype_df = all_adata.obs[[args.phenotype_column, 'imageid']]
     merged_df = spatial_count_df.join(phenotype_df)
     all_adata.uns['spatial_count'] = merged_df
 
