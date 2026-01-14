@@ -16,7 +16,7 @@ parser.add_argument('--radius', type=float, default=50.0)
 parser.add_argument('--x-coord-column', type=str, default='Centroid X', help="Column name for X coordinate")
 parser.add_argument('--y-coord-column', type=str, default='Centroid Y', help="Column name for Y coordinate")
 parser.add_argument('--phenotype-column', type=str, default='Phenotype', help="Column name for Phenotype")
-parser.add_argument('--imageid-column', type=str, default='imageid', help="Column name for Image ID")
+parser.add_argument('--imageid-column', type=str, default='imageid_', help="Column name for Image ID")
 
 args = parser.parse_args()
 
