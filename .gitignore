@@ -37,3 +37,5 @@ next-env.d.ts
 
 # Python
 __pycache__
+
+test_venv

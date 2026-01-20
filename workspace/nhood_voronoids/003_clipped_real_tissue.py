@@ -178,8 +178,9 @@ if __name__ == '__main__':
     # Load cell data
     nhood_df = pd.read_csv(args.input)
     nhood_df = nhood_df[nhood_df[args.sample_name_column] == args.sample_name]
-    nhood_df = nhood_df[nhood_df[args.region_column] == args.region]
     print(f"Loaded {len(nhood_df)} cells for sample '{args.sample_name}'")
+    nhood_df = nhood_df[nhood_df[args.region_column] == args.region]
+    print(f"{len(nhood_df)} cells remain after filtering for region '{args.region}'")
 
     if len(nhood_df) == 0:
         print(f"No cells found for sample '{args.sample_name}'. Available samples:")
