@@ -17,6 +17,7 @@ parser.add_argument('--x-coord-column', type=str, default='Centroid X', help="Co
 parser.add_argument('--y-coord-column', type=str, default='Centroid Y', help="Column name for Y coordinate")
 parser.add_argument('--phenotype-column', type=str, default='Phenotype', help="Column name for Phenotype")
 parser.add_argument('--imageid-column', type=str, default='imageid_', help="Column name for Image ID")
+parser.add_argument('--region-column', type=str, default='Parent Region', help="Column name for Region")
 
 args = parser.parse_args()
 
@@ -60,7 +61,7 @@ if __name__ == '__main__':
 
     # Merge datas with same index (all_adata.uns['spatial_count'] and all_adata.obs[["Phenotype"]])
     spatial_count_df = all_adata.uns['spatial_count']
-    phenotype_df = all_adata.obs[[args.phenotype_column, 'imageid', 'X_centroid', 'Y_centroid']]
+    phenotype_df = all_adata.obs[[args.phenotype_column, args.region_column, 'imageid', 'X_centroid', 'Y_centroid']]
     merged_df = spatial_count_df.join(phenotype_df)
     merged_df.rename(columns={'X_centroid': args.x_coord_column, 'Y_centroid': args.y_coord_column, 'imageid': args.imageid_column}, inplace=True)
     all_adata.uns['spatial_count'] = merged_df
