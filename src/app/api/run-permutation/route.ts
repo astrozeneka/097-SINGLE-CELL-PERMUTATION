@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
   const stream = new ReadableStream({
     start(controller) {
-      const pythonPath = "/mnt/sisplockers/jantappapac/Ryan/conda/scimap/bin/python";
+      const pythonPath = "python";
       const scriptPath = "43_spatial_distance_permutation_test.py";
       const outputFilename = `permutation_results_${filename}`;
       const args = [
