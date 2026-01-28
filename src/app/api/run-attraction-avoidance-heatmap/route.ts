@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 
   const stream = new ReadableStream({
     start(controller) {
-      const pythonPath = "/mnt/sisplockers/jantappapac/Ryan/conda/scimap/bin/python";
+      const pythonPath = "python";
       const scriptPath = "45b_attraction_avoidance_heatmap.py";
 
       // Parse filenames array and build selector pattern

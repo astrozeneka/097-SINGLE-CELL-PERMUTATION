@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 
   const stream = new ReadableStream({
     start(controller) {
-      const pythonPath = "/mnt/sisplockers/jantappapac/Ryan/conda/scimap/bin/python";
+      const pythonPath = "python";
       const scriptPath = "62_spatial_distance_real_tissue.py";
       const outputFilename = `spatial_distance_${filename}`;
       const args = [

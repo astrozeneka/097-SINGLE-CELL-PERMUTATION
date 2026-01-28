@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 
   const stream = new ReadableStream({
     start(controller) {
-      const pythonPath = "/mnt/sisplockers/jantappapac/Ryan/conda/scimap/bin/python";
+      const pythonPath = "python";
       const scriptPath = "002_attribution_matrix.py";
       const outputFilename = `attribution_${filename.replace('.csv', '')}.png`;
       const args = [
