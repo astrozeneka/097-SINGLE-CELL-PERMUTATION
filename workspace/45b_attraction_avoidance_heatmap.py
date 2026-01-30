@@ -49,6 +49,7 @@ def draw_heatmap_v2(df):
                         'mean_2': mean_2
                     })
 
+    print("heatmap_res keys:", heatmap_res.keys())
     heatmap_dfs = {}
     for (group1, group2), results_list in heatmap_res.items():
         if len(results_list) > 0:
