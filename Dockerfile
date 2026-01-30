@@ -3,6 +3,9 @@ FROM nikolaik/python-nodejs:python3.11-nodejs24
 
 WORKDIR /app
 
+# INSTALL ZIP
+RUN apt-get update && apt-get install -y zip && rm -rf /var/lib/apt/lists/*
+
 # Copy Python requirements first for better layer caching
 COPY requirements.txt ./
 
