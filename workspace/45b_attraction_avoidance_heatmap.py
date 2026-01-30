@@ -24,6 +24,7 @@ def draw_heatmap_v2(df):
     print("Dataframe shape:", df.shape)
     print("Dataframe columns:", df.columns.tolist())
     phenotypes = sorted(df['source_phenotype'].unique())
+    print("Phenotypes found:", phenotypes)
     heatmap_res = {(a, b): [] for a, b in combinations(['Observed', 'Permuted'], 2)}
     for src_pheno in phenotypes:
         for dest_pheno in phenotypes:
