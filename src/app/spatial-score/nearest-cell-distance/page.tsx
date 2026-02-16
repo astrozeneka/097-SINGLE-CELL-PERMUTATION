@@ -12,22 +12,36 @@ export default function NearestCellDistance() {
     const [fileItems, setFileItems] = useState<FileItem[]>([]);
 
     // The list of columns
-    const [columnList, setColumnList] = useState<string[]>([]);
+    const [columnList, setColumnList] = useState<Set<string>>(new Set());
 
+    // Logs
     const [logs, setLogs] = useState<string[]>([]);
+
+    // Error message for column mismatch
+    const [error, setError] = useState<string | null>(null);
+
+    // Columns to be selected
+    const [objectIdColumn, setObjectIdColumn] = useState<string|null>(null);
+    const [centroidXColumn, setCentroidXColumn] = useState<string|null>(null);
+    const [centroidYColumn, setCentroidYColumn] = useState<string|null>(null);
+    const [classificationColumn, setClassificationColumn] = useState<string|null>(null);
+
+    const getDataColumns = (text: string): Set<string> =>
+        new Set(text.split("\n")[0].split(",").map(c => c.trim()));
 
     const handleFile = (id: number, e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        setFileItems((prev) => {
-            const exists = prev.find((item) => item.id === id);
-            if (exists) return prev.map((item) => item.id === id ? { ...item, file } : item);
-            return [...prev, { id, file }];
-        });
+        setError(null);
         const reader = new FileReader();
         reader.onload = () => {
-            const firstLine = (reader.result as string).split("\n")[0];
-            setColumnList(firstLine.split(",").map(c => c.trim()));
+            const cols = getDataColumns(reader.result as string);
+            setFileItems((prev) => {
+                const exists = prev.find((item) => item.id === id);
+                if (exists) return prev.map((item) => item.id === id ? { ...item, file } : item);
+                return [...prev, { id, file }];
+            });
+            setColumnList((prev) => prev.size === 0 ? cols : new Set([...prev].filter(c => cols.has(c))));
         };
         reader.readAsText(file);
     };
@@ -54,8 +68,26 @@ export default function NearestCellDistance() {
         <input type="file" accept=".csv" onChange={(e) => handleFile(2, e)} />
         <input type="file" accept=".csv" onChange={(e) => handleFile(3, e)} />
         <input type="file" accept=".csv" onChange={(e) => handleFile(4, e)} />
+        {error && <p style={{ color: "red" }}>{error}</p>}
+        <hr/>
+        <select disabled={!columnList.size} value={objectIdColumn ?? ""} onChange={(e) => setObjectIdColumn(e.target.value)}>
+            <option value="">Object ID</option>
+            {[...columnList].map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select disabled={!columnList.size} value={centroidXColumn ?? ""} onChange={(e) => setCentroidXColumn(e.target.value)}>
+            <option value="">Centroid X</option>
+            {[...columnList].map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select disabled={!columnList.size} value={centroidYColumn ?? ""} onChange={(e) => setCentroidYColumn(e.target.value)}>
+            <option value="">Centroid Y</option>
+            {[...columnList].map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select disabled={!columnList.size} value={classificationColumn ?? ""} onChange={(e) => setClassificationColumn(e.target.value)}>
+            <option value="">Classification</option>
+            {[...columnList].map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <hr/>
         <button onClick={handleSubmit}>Submit</button>
-        <pre>{JSON.stringify(columnList)}</pre>
         <pre>{logs.join("\n")}</pre>
     </>);
 }
