@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     const fileBuffer = await readFile(filePath);
 
-    const contentType = isZipFile ? 'application/zip' : 'text/csv';
+    const contentType = isZipFile ? 'application/zip' : filename.endsWith('.png') ? 'image/png' : 'text/csv';
 
     return new Response(new Uint8Array(fileBuffer), {
       headers: {
