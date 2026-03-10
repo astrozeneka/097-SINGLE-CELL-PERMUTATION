@@ -10,10 +10,12 @@ export default function ProximityComputePage() {
     const [centroidX, setCentroidX] = useState("");
     const [centroidY, setCentroidY] = useState("");
     const [parentArea, setParentArea] = useState("");
+    const [parentRegion, setParentRegion] = useState("");
     const [cellType, setCellType] = useState("");
     const consoleRef = useRef<ConsoleHandle>(null);
     const eventSourceRef = useRef<EventSource | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [downloadFilename, setDownloadFilename] = useState<string | null>(null);
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(event.target.files ?? []);
@@ -57,6 +59,7 @@ export default function ProximityComputePage() {
                 xhr.send(formData);
             });
 
+        const uploadedFilenames: string[] = [];
         for (const file of selectedFiles) {
             const idx = consoleRef.current!.pushLog(`${file.name} ${bar(0)}`);
             const uploadResult = await uploadFile(file, idx);
@@ -65,16 +68,20 @@ export default function ProximityComputePage() {
                 setIsProcessing(false);
                 return;
             }
+            uploadedFilenames.push(uploadResult.path);
         }
 
         // pass relevant parameters
+        const outputFilename = `data/${crypto.randomUUID()}.zip`;
         const params = new URLSearchParams({
             script: "proximity-analysis/compute.py",
-            inputs: selectedFiles.map(f => `data/${f.name}`).join(","),
+            inputs: uploadedFilenames.join(","),
             centroid_x_col: centroidX,
             centroid_y_col: centroidY,
             parent_area_col: parentArea,
+            parent_region_col: parentRegion,
             cell_type_col: cellType,
+            output: outputFilename,
         });
 
         const eventSource = new EventSource(`/api/run-python?${params.toString()}`);
@@ -89,6 +96,7 @@ export default function ProximityComputePage() {
                 consoleRef.current?.pushLog(`ERROR: ${data.content}`);
             } else if (data.type === "complete") {
                 consoleRef.current?.pushLog(`Process completed with exit code: ${data.exitCode}`);
+                if (data.exitCode === 0 && data.outputFilename) setDownloadFilename(data.outputFilename);
                 eventSource.close();
                 eventSourceRef.current = null;
                 setIsProcessing(false);
@@ -123,6 +131,10 @@ export default function ProximityComputePage() {
                 {columnSelect(centroidY, setCentroidY, "Select centroid y column")}
             </div>
             <div>
+                {/* Select parent region column */}
+                {columnSelect(parentRegion, setParentRegion, "Select parent region column")}
+            </div>
+            <div>
                 {/* Select parent area column */}
                 {columnSelect(parentArea, setParentArea, "Select parent area column")}
             </div>
@@ -131,6 +143,7 @@ export default function ProximityComputePage() {
                 {columnSelect(cellType, setCellType, "Select cell type column")}
             </div>
             <button onClick={handleRun}>Run</button>
+            {downloadFilename && <a href={`/api/download-file?filename=${downloadFilename}`} download>Download</a>}
 
 
             <Console ref={consoleRef} />

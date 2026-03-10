@@ -5,6 +5,8 @@ export async function GET(request: Request) {
 
     const scriptPath = searchParams.get('script');
 
+    const pythonExecutable = process.env.PYTHON_EXECUTABLE || 'python';
+
     if (!scriptPath) {
         return Response.json({ error: 'script parameter is required' }, { status: 400 });
     }
@@ -43,7 +45,7 @@ export async function GET(request: Request) {
                 }
             };
 
-            const childProcess = spawn('python', args, {
+            const childProcess = spawn(pythonExecutable, args, {
                 cwd: 'workspace',
                 env: { ...process.env, PYTHONUNBUFFERED: '1' }
             });
