@@ -2,6 +2,7 @@
 
 import Console, { ConsoleHandle } from "@/app/components/console";
 import { useRef, useState } from "react";
+import Link from "next/link";
 
 export default function ProximityComputePage() {
     const [headers, setHeaders] = useState<string[][]>([]);
@@ -30,10 +31,14 @@ export default function ProximityComputePage() {
     };
 
     const columnSelect = (value: string, onChange: (v: string) => void, label: string) => (
-        <select value={value} onChange={e => onChange(e.target.value)}>
-            <option value="">-- {label} --</option>
-            {[...headerSet].map(h => <option key={h} value={h}>{h}</option>)}
-        </select>
+        <div>
+            <label className="text-xs text-slate-400 uppercase tracking-wider block mb-1.5">{label}</label>
+            <select value={value} onChange={e => onChange(e.target.value)}
+                className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors">
+                <option value="">— select —</option>
+                {[...headerSet].map(h => <option key={h} value={h}>{h}</option>)}
+            </select>
+        </div>
     );
 
     const handleRun = async () => {
@@ -116,37 +121,72 @@ export default function ProximityComputePage() {
     };
 
     return (
-        <div>
-            <h1>Proximity Compute</h1>
-            <div>
-                <input type="file" multiple accept=".csv" onChange={handleFileChange} />
-                {/*<pre>{JSON.stringify(headers, null, 2)}</pre>*/}
-            </div>
-            <div>
-                {/* Select centroid x column */}
-                {columnSelect(centroidX, setCentroidX, "Select centroid x column")}
-            </div>
-            <div>
-                {/* Select centroid y column */}
-                {columnSelect(centroidY, setCentroidY, "Select centroid y column")}
-            </div>
-            <div>
-                {/* Select parent region column */}
-                {columnSelect(parentRegion, setParentRegion, "Select parent region column")}
-            </div>
-            <div>
-                {/* Select parent area column */}
-                {columnSelect(parentArea, setParentArea, "Select parent area column")}
-            </div>
-            <div>
-                {/* Select cell type column */}
-                {columnSelect(cellType, setCellType, "Select cell type column")}
-            </div>
-            <button onClick={handleRun}>Run</button>
-            {downloadFilename && <a href={`/api/download-file?filename=${downloadFilename}`} download>Download</a>}
+        <div className="min-h-screen bg-slate-950 text-slate-100 p-6">
+            <div className="max-w-6xl mx-auto">
+                <header className="mb-6">
+                    <Link href="/" className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-slate-300 transition-colors mb-4">
+                        ← Back to home
+                    </Link>
+                    <div className="flex items-center gap-4">
+                        <h1 className="text-2xl font-light text-slate-100 tracking-wide">
+                            Proximity Analysis (Step 1): Compute
+                        </h1>
+                        {isProcessing && (
+                            <span className="text-xs text-red-400 font-medium uppercase tracking-wider animate-pulse">
+                                Do not close this page
+                            </span>
+                        )}
+                    </div>
+                    <div className="h-px bg-gradient-to-r from-slate-700 via-slate-600 to-transparent mt-2"></div>
+                </header>
 
+                <div className="mb-6 space-y-4">
+                    <div>
+                        <label className="text-xs text-slate-400 uppercase tracking-wider block mb-1.5">Input Files</label>
+                        <input type="file" multiple accept=".csv" onChange={handleFileChange}
+                            className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        {columnSelect(centroidX, setCentroidX, "Centroid X Column")}
+                        {columnSelect(centroidY, setCentroidY, "Centroid Y Column")}
+                        {columnSelect(parentRegion, setParentRegion, "Parent Region Column")}
+                        {columnSelect(parentArea, setParentArea, "Parent Area Column")}
+                        {columnSelect(cellType, setCellType, "Cell Type Column")}
+                    </div>
+                    <div className="flex gap-3 items-center">
+                        <button onClick={handleRun} disabled={isProcessing}
+                            className="px-5 py-1.5 bg-slate-800 text-slate-200 text-sm hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 disabled:cursor-not-allowed transition-colors">
+                            {isProcessing ? "Running..." : "Run"}
+                        </button>
+                        {downloadFilename && !isProcessing && (
+                            <a href={`/api/download-file?filename=${downloadFilename}`} download
+                                className="px-3 py-1 bg-emerald-900/50 text-emerald-400 text-xs hover:bg-emerald-900/70 transition-colors">
+                                ↓ Download ZIP
+                            </a>
+                        )}
+                    </div>
+                </div>
 
-            <Console ref={consoleRef} />
+                <div className="grid grid-cols-2 gap-6">
+                    <div>
+                        <Console ref={consoleRef} />
+                    </div>
+                    <div>
+                        <h2 className="text-sm font-light text-slate-400 uppercase tracking-wider mb-3">Output File</h2>
+                        <div className="bg-slate-900/50 backdrop-blur border-l border-slate-800 h-[calc(100vh-480px)] overflow-auto flex items-center justify-center p-3">
+                            {!isProcessing && downloadFilename ? (
+                                <div className="text-slate-300 text-center">
+                                    <div className="text-emerald-400 text-lg mb-2">✓</div>
+                                    <div className="text-sm">Output ready for download</div>
+                                    <div className="text-xs text-slate-500 mt-1">{downloadFilename.replace(/^data\//, "")}</div>
+                                </div>
+                            ) : (
+                                <div className="text-slate-600 italic text-sm">No output generated yet...</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

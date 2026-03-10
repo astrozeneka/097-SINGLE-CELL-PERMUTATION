@@ -2,6 +2,7 @@
 
 import Console, { ConsoleHandle } from "@/app/components/console";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
 const DATA_COLS = ["Phenotype A", "Phenotype B", "Mean Group 1", "Mean Group 2", "Mann-Whitney U", "p-value"];
 
@@ -177,53 +178,122 @@ export default function ProximityComputePage() {
     }
 
     return (
-        <div>
-            <h1>Proximity Analyze</h1>
-            <div>
-                <label>Group 1 name: <input type="text" value={group1Name} onChange={e => setGroup1Name(e.target.value)} /></label>
-                <input type="file" multiple accept=".csv" onChange={handleGroup1FilesChange} />
-            </div>
-            <div>
-                <label>Group 2 name: <input type="text" value={group2Name} onChange={e => setGroup2Name(e.target.value)} /></label>
-                <input type="file" multiple accept=".csv" onChange={handleGroup2FilesChange} />
-            </div>
+        <div className="min-h-screen bg-slate-950 text-slate-100 p-6">
+            <div className="max-w-6xl mx-auto">
+                <header className="mb-6">
+                    <Link href="/" className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-slate-300 transition-colors mb-4">
+                        ← Back to home
+                    </Link>
+                    <div className="flex items-center gap-4">
+                        <h1 className="text-2xl font-light text-slate-100 tracking-wide">
+                            Proximity Analysis (Step 2): Analyze
+                        </h1>
+                        {isProcessing && (
+                            <span className="text-xs text-red-400 font-medium uppercase tracking-wider animate-pulse">
+                                Do not close this page
+                            </span>
+                        )}
+                    </div>
+                    <div className="h-px bg-gradient-to-r from-slate-700 via-slate-600 to-transparent mt-2"></div>
+                </header>
 
-            <button onClick={handleRun}>Run</button>
-
-            <button onClick={handlePlot} disabled={selectedRows.size === 0}>Plot</button>
-
-            <Console ref={consoleRef} />
-            
-            <table>
-                <thead>
-                    <tr>
-                        {DATA_COLS.map(col => <th key={col}>{colLabel(col)}</th>)}
-                        <th>Select</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {tableRows.map((row, i) => (
-                        <tr key={i}>
-                            {DATA_COLS.map(col => <td key={col}>{row[col]}</td>)}
-                            <td>
-                                <input type="checkbox" checked={selectedRows.has(i)} onChange={() => toggleRow(i)} />
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-
-            {(isPlotting || plotImageUrl) && (
-                <div style={{ position: "relative", display: "inline-block" }}>
-                    {plotImageUrl && <img src={plotImageUrl} alt="Plot" style={{ opacity: isPlotting ? 0.3 : 1 }} />}
-                    {isPlotting && (
-                        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            Generating plot...
+                <div className="mb-6 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs text-slate-400 uppercase tracking-wider block mb-1.5">Group 1 Name</label>
+                            <input type="text" value={group1Name} onChange={e => setGroup1Name(e.target.value)}
+                                className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors" />
                         </div>
-                    )}
+                        <div>
+                            <label className="text-xs text-slate-400 uppercase tracking-wider block mb-1.5">Group 1 Files</label>
+                            <input type="file" multiple accept=".csv" onChange={handleGroup1FilesChange}
+                                className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700" />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs text-slate-400 uppercase tracking-wider block mb-1.5">Group 2 Name</label>
+                            <input type="text" value={group2Name} onChange={e => setGroup2Name(e.target.value)}
+                                className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors" />
+                        </div>
+                        <div>
+                            <label className="text-xs text-slate-400 uppercase tracking-wider block mb-1.5">Group 2 Files</label>
+                            <input type="file" multiple accept=".csv" onChange={handleGroup2FilesChange}
+                                className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700" />
+                        </div>
+                    </div>
+                    <div className="flex gap-3 items-center">
+                        <button onClick={handleRun} disabled={isProcessing}
+                            className="px-5 py-1.5 bg-slate-800 text-slate-200 text-sm hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 disabled:cursor-not-allowed transition-colors">
+                            {isProcessing ? "Running..." : "Run"}
+                        </button>
+                        <button onClick={handlePlot} disabled={selectedRows.size === 0 || isPlotting}
+                            className="px-5 py-1.5 bg-slate-800 text-slate-200 text-sm hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 disabled:cursor-not-allowed transition-colors">
+                            {isPlotting ? "Plotting..." : "Plot"}
+                        </button>
+                        {downloadCSVFilename && !isProcessing && (
+                            <a href={`/api/download-file?filename=${downloadCSVFilename.replace(/^data\//, "")}`} download
+                                className="px-3 py-1 bg-emerald-900/50 text-emerald-400 text-xs hover:bg-emerald-900/70 transition-colors">
+                                ↓ Download CSV
+                            </a>
+                        )}
+                    </div>
                 </div>
-            )}
 
+                <div className="grid grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <Console ref={consoleRef} />
+                    </div>
+                    <div>
+                        <h2 className="text-sm font-light text-slate-400 uppercase tracking-wider mb-3">Results</h2>
+                        <div className="bg-slate-900/50 border-l border-slate-800 overflow-y-auto overflow-x-hidden h-[300px]">
+                            {tableRows.length > 0 ? (
+                                <table className="w-full table-fixed text-xs">
+                                    <thead className="sticky top-0 bg-slate-900">
+                                        <tr>
+                                            {DATA_COLS.map(col => (
+                                                <th key={col} className="px-1.5 py-1.5 text-left text-slate-400 font-medium uppercase tracking-wider truncate">
+                                                    {colLabel(col)}
+                                                </th>
+                                            ))}
+                                            <th className="px-1.5 py-1.5 text-center text-slate-400 font-medium w-7">✓</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {tableRows.map((row, i) => (
+                                            <tr key={i} onClick={() => toggleRow(i)}
+                                                className={`cursor-pointer border-t border-slate-800 hover:bg-slate-800/50 ${selectedRows.has(i) ? "bg-slate-800/70" : ""}`}>
+                                                {DATA_COLS.map(col => (
+                                                    <td key={col} className="px-1.5 py-1 text-slate-300 truncate">{row[col]}</td>
+                                                ))}
+                                                <td className="px-1.5 py-1 text-center">
+                                                    <input type="checkbox" checked={selectedRows.has(i)} onChange={() => toggleRow(i)} onClick={e => e.stopPropagation()} className="accent-teal-400" />
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-slate-600 italic text-sm">No results yet...</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {(isPlotting || plotImageUrl) && (
+                    <div>
+                        <h2 className="text-sm font-light text-slate-400 uppercase tracking-wider mb-3">Figure</h2>
+                        <div className="bg-slate-900/50 border-l border-slate-800 p-4 relative">
+                            {plotImageUrl && <img src={plotImageUrl} alt="Plot" className={`max-w-full ${isPlotting ? "opacity-30" : ""}`} />}
+                            {isPlotting && (
+                                <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-sm">
+                                    Generating plot...
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

@@ -112,6 +112,38 @@ export default function Home() {
             </div>
           </section>
 
+          {/* Proximity Analysis Pipeline */}
+          <section>
+            <h2 className="text-lg font-light text-slate-300 mb-3 tracking-wide">
+              Proximity Analysis Pipeline
+            </h2>
+            <div className="grid gap-2">
+              <Link
+                href="/proximity-analysis/001_proximity_compute"
+                className="block px-4 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 transition-colors"
+              >
+                <h3 className="text-sm font-medium text-slate-100">
+                  Step 1: Compute
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Compute pairwise proximity scores from spatial coordinates
+                </p>
+              </Link>
+
+              <Link
+                href="/proximity-analysis/002_proximity_analyze"
+                className="block px-4 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 transition-colors"
+              >
+                <h3 className="text-sm font-medium text-slate-100">
+                  Step 2: Analyze
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Compare proximity scores between two groups with statistical testing
+                </p>
+              </Link>
+            </div>
+          </section>
+
           {/* Other Tools */}
           <section>
             <h2 className="text-lg font-light text-slate-300 mb-3 tracking-wide">
