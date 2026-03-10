@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 
 export default function ProximityComputePage() {
     const [headers, setHeaders] = useState<string[][]>([]);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [headerSet, setHeaderSet] = useState<Set<string>>(new Set());
     const [centroidX, setCentroidX] = useState("");
     const [centroidY, setCentroidY] = useState("");
@@ -16,6 +17,7 @@ export default function ProximityComputePage() {
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(event.target.files ?? []);
+        setSelectedFiles(files);
         const results = await Promise.all(
             files.map(file => file.text().then(text => text.split(/\r?\n/)[0].split(",")))
         );
@@ -32,11 +34,50 @@ export default function ProximityComputePage() {
         </select>
     );
 
-    const handleRun = () => {
+    const handleRun = async () => {
         setIsProcessing(true);
         consoleRef.current?.clearLogs();
-        // TODO: pass relevant parameters
-        const eventSource = new EventSource("/api/run-python?script=proximity-analysis/compute.py");
+
+        const bar = (pct: number) => {
+            const filled = Math.round(pct / 5);
+            return `[${'#'.repeat(filled)}${'-'.repeat(20 - filled)}] ${pct}%`;
+        };
+        const uploadFile = (file: File, idx: number): Promise<any> =>
+            new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                const formData = new FormData();
+                formData.append("file", file);
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable)
+                        consoleRef.current!.pushLog(`${file.name} ${bar(Math.round(e.loaded / e.total * 100))}`, idx);
+                };
+                xhr.onload = () => resolve(JSON.parse(xhr.responseText));
+                xhr.onerror = () => reject(new Error("Upload failed"));
+                xhr.open("POST", "/api/upload-file");
+                xhr.send(formData);
+            });
+
+        for (const file of selectedFiles) {
+            const idx = consoleRef.current!.pushLog(`${file.name} ${bar(0)}`);
+            const uploadResult = await uploadFile(file, idx);
+            if (!uploadResult.success) {
+                consoleRef.current!.pushLog(`ERROR: Failed to upload ${file.name}`, idx);
+                setIsProcessing(false);
+                return;
+            }
+        }
+
+        // pass relevant parameters
+        const params = new URLSearchParams({
+            script: "proximity-analysis/compute.py",
+            inputs: selectedFiles.map(f => `data/${f.name}`).join(","),
+            centroid_x_col: centroidX,
+            centroid_y_col: centroidY,
+            parent_area_col: parentArea,
+            cell_type_col: cellType,
+        });
+
+        const eventSource = new EventSource(`/api/run-python?${params.toString()}`);
         eventSourceRef.current = eventSource;
         eventSource.onmessage = (event) => {
             const data = JSON.parse(event.data);

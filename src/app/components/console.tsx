@@ -1,19 +1,34 @@
 "use client";
 
-import { forwardRef, useImperativeHandle, useState } from "react";
+import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 
 export interface ConsoleHandle {
-    pushLog: (message: string) => void;
+    pushLog: (message: string, index?: number) => number;
     clearLogs: () => void;
 }
 
 const Console = forwardRef<ConsoleHandle>(function Console(_, ref) {
-    const [logs, setLogs] = useState<string[]>([]);
+    const logsRef = useRef<string[]>([]);
+    const [, forceUpdate] = useState(0);
 
     useImperativeHandle(ref, () => ({
-        pushLog: (message: string) => setLogs(prev => [...prev, message]),
-        clearLogs: () => setLogs([]),
+        pushLog: (message, index?) => {
+            if (index !== undefined) {
+                logsRef.current[index] = message;
+            } else {
+                index = logsRef.current.length;
+                logsRef.current.push(message);
+            }
+            forceUpdate(n => n + 1);
+            return index;
+        },
+        clearLogs: () => {
+            logsRef.current = [];
+            forceUpdate(n => n + 1);
+        },
     }));
+
+    const logs = logsRef.current;
 
     return (
         <div>
