@@ -77,7 +77,7 @@ export default function ProximityComputePage() {
         const tuples = [...selectedRows]
             .map(i => `${tableRows[i]['Phenotype A']}|${tableRows[i]['Phenotype B']}`)
             .join(",");
-        const uuid = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36);
+        const uuid = Math.random().toString(36).slice(2) + Date.now().toString(36);
         const outputFilename = `data/${uuid}.png`;
         const params = new URLSearchParams({
             script: "proximity-analysis/003_plot.py",
@@ -140,7 +140,7 @@ export default function ProximityComputePage() {
                 }
             }
 
-            const outputFilename = `data/${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36)}.csv`;
+            const outputFilename = `data/${ Math.random().toString(36).slice(2) + Date.now().toString(36) }.csv`;
             const params = new URLSearchParams({
                 script: "proximity-analysis/002_analyze.py",
                 group1_inputs: uploadedGroup1FilePaths.join(","),
