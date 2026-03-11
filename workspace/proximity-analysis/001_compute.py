@@ -13,6 +13,7 @@ parser.add_argument("--centroid_y_col")
 parser.add_argument("--parent_area_col")
 parser.add_argument("--parent_region_col")
 parser.add_argument("--cell_type_col")
+parser.add_argument("--pixel_size", type=float, default=0.5)
 parser.add_argument("--output")
 args = parser.parse_args()
 
@@ -56,6 +57,7 @@ for f in inputs:
         parent_area_col=args.parent_area_col,
         parent_region_col=args.parent_region_col,
         phenotype_col=args.cell_type_col,
+        pixel_size=args.pixel_size,
     )
 
 if args.output:

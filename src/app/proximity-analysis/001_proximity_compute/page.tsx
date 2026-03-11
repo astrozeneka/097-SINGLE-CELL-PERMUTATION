@@ -13,6 +13,7 @@ export default function ProximityComputePage() {
     const [parentArea, setParentArea] = useState("");
     const [parentRegion, setParentRegion] = useState("");
     const [cellType, setCellType] = useState("");
+    const [pixelSize, setPixelSize] = useState("0.5");
     const consoleRef = useRef<ConsoleHandle>(null);
     const eventSourceRef = useRef<EventSource | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -87,6 +88,7 @@ export default function ProximityComputePage() {
             parent_area_col: parentArea,
             parent_region_col: parentRegion,
             cell_type_col: cellType,
+            pixel_size: pixelSize,
             output: outputFilename,
         });
 
@@ -153,6 +155,11 @@ export default function ProximityComputePage() {
                         {columnSelect(parentRegion, setParentRegion, "Parent Region Column")}
                         {columnSelect(parentArea, setParentArea, "Parent Area Column")}
                         {columnSelect(cellType, setCellType, "Cell Type Column")}
+                        <div>
+                            <label className="text-xs text-slate-400 uppercase tracking-wider block mb-1.5">Pixel Size (µm)</label>
+                            <input type="number" value={pixelSize} onChange={e => setPixelSize(e.target.value)} step="0.1" min="0"
+                                className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors" />
+                        </div>
                     </div>
                     <div className="flex gap-3 items-center">
                         <button onClick={handleRun} disabled={isProcessing}
