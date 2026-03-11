@@ -77,7 +77,8 @@ export default function ProximityComputePage() {
         }
 
         // pass relevant parameters
-        const outputFilename = `data/${crypto.randomUUID()}.zip`;
+        const uuid = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36);
+        const outputFilename = `data/${uuid}.zip`;
         const params = new URLSearchParams({
             script: "proximity-analysis/001_compute.py",
             inputs: uploadedFilenames.join(","),
