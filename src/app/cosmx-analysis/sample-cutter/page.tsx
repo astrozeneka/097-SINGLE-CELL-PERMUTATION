@@ -1,3 +1,5 @@
+"use client";
+
 import { DrawingCanvas } from "./drawing-canvas";
 import { UnderlyingCanvas } from "./underlying-canvas";
 
