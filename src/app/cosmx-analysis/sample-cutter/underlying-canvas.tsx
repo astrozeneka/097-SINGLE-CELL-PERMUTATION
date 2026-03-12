@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { Transform } from "./sample-cutter-client";
 
 // Interleaved buffer: [x, y, cluster,  x, y, cluster, ...]
 // stride = 3 floats = 12 bytes
@@ -10,9 +11,13 @@ attribute vec2 a_pos;
 attribute float a_cluster;
 uniform vec2 u_scale;
 uniform vec2 u_offset;
+uniform float u_userScale;
+uniform vec2 u_userTranslate;
 varying float v_cluster;
 void main() {
-    gl_Position = vec4(a_pos * u_scale + u_offset, 0, 1);
+    vec2 clip = a_pos * u_scale + u_offset;
+    clip = clip * u_userScale + u_userTranslate;
+    gl_Position = vec4(clip, 0, 1);
     gl_PointSize = 2.0;
     v_cluster = a_cluster;
 }`;
@@ -34,25 +39,34 @@ function compileShader(gl: WebGLRenderingContext, type: number, src: string) {
     return s;
 }
 
-export function UnderlyingCanvas({ data }: { data: number[] }) {
+type GlState = {
+    gl: WebGLRenderingContext;
+    count: number;
+    userScaleLoc: WebGLUniformLocation;
+    userTranslateLoc: WebGLUniformLocation;
+};
+
+export function UnderlyingCanvas({ data, transform }: { data: number[]; transform: Transform }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const glRef = useRef<GlState | null>(null);
 
     useEffect(() => {
-        const buf_data = new Float32Array(data); // [x, y, cluster, ...]
-        const n = buf_data.length / 3;
         const canvas = canvasRef.current!;
-        const gl = canvas.getContext("webgl")!;
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
 
+        const gl = canvas.getContext("webgl")!;
         const prog = gl.createProgram()!;
         gl.attachShader(prog, compileShader(gl, gl.VERTEX_SHADER, VERT));
         gl.attachShader(prog, compileShader(gl, gl.FRAGMENT_SHADER, FRAG));
         gl.linkProgram(prog);
         gl.useProgram(prog);
 
+        const buf_data = new Float32Array(data);
         gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
         gl.bufferData(gl.ARRAY_BUFFER, buf_data, gl.STATIC_DRAW);
 
-        const stride = 12; // 3 floats * 4 bytes
+        const stride = 12;
         const a_pos = gl.getAttribLocation(prog, "a_pos");
         gl.enableVertexAttribArray(a_pos);
         gl.vertexAttribPointer(a_pos, 2, gl.FLOAT, false, stride, 0);
@@ -67,13 +81,31 @@ export function UnderlyingCanvas({ data }: { data: number[] }) {
             minY = Math.min(minY, buf_data[i + 1]); maxY = Math.max(maxY, buf_data[i + 1]);
         }
         const sx = 2 / (maxX - minX), sy = 2 / (maxY - minY);
-        gl.uniform2f(gl.getUniformLocation(prog, "u_scale"),  sx, sy);
+        gl.uniform2f(gl.getUniformLocation(prog, "u_scale"), sx, sy);
         gl.uniform2f(gl.getUniformLocation(prog, "u_offset"), -1 - minX * sx, -1 - minY * sy);
 
-        gl.clearColor(0, 0, 0, 1);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.drawArrays(gl.POINTS, 0, n);
-    }, [data]);
+        glRef.current = {
+            gl,
+            count: buf_data.length / 3,
+            userScaleLoc: gl.getUniformLocation(prog, "u_userScale")!,
+            userTranslateLoc: gl.getUniformLocation(prog, "u_userTranslate")!,
+        };
+    }, []);
 
-    return <canvas ref={canvasRef} width={500} height={500} />;
+    useEffect(() => {
+        const state = glRef.current;
+        if (!state) return;
+        const { gl, count, userScaleLoc, userTranslateLoc } = state;
+        const { width, height } = canvasRef.current!;
+        const s = transform.scale;
+        gl.uniform1f(userScaleLoc, s);
+        gl.uniform2f(userTranslateLoc,
+            (s - 1) + 2 * transform.x / width,
+            (1 - s) - 2 * transform.y / height,
+        );
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.POINTS, 0, count);
+    }, [transform]);
+
+    return <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />;
 }
