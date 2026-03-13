@@ -39,7 +39,7 @@ export function DrawingCanvas({ transform, setTransform, savedPolygons, dataBoun
             if (pts.length < 2) return;
             setPolygons(ps => [...ps, pts]);
             setCurrentPoly([]);
-            const ring = [...pts, pts[0]].map(p => [p.x, p.y]);
+            const ring = [...pts, pts[0]].map(p => [dataBounds.maxX - p.x, p.y]);
             navigator.clipboard.writeText(JSON.stringify({ type: "Feature", geometry: { type: "Polygon", coordinates: [ring] } }));
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
@@ -50,7 +50,7 @@ export function DrawingCanvas({ transform, setTransform, savedPolygons, dataBoun
             canvas.removeEventListener("wheel", onWheel);
             window.removeEventListener("keydown", onKeyDown);
         };
-    }, [setTransform]);
+    }, [setTransform, dataBounds]);
 
     useEffect(() => {
         const canvas = canvasRef.current!;
