@@ -18,19 +18,20 @@ void main() {
     vec2 clip = a_pos * u_scale + u_offset;
     clip = clip * u_userScale + u_userTranslate;
     gl_Position = vec4(clip, 0, 1);
-    gl_PointSize = 2.0;
+    gl_PointSize = 0.5 * u_userScale;
     v_cluster = a_cluster;
 }`;
 
 const FRAG = `precision mediump float;
 varying float v_cluster;
+uniform float u_numClusters;
 vec3 hue2rgb(float h) {
     vec4 k = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
     vec3 p = abs(fract(vec3(h) + k.xyz) * 6.0 - k.www);
     return clamp(p - k.xxx, 0.0, 1.0);
 }
 void main() {
-    gl_FragColor = vec4(hue2rgb(mod(v_cluster, 20.0) / 20.0), 0.8);
+    gl_FragColor = vec4(hue2rgb(mod(v_cluster, u_numClusters) / u_numClusters), 0.8);
 }`;
 
 function compileShader(gl: WebGLRenderingContext, type: number, src: string) {
@@ -46,7 +47,7 @@ type GlState = {
     userTranslateLoc: WebGLUniformLocation;
 };
 
-export function UnderlyingCanvas({ data, transform }: { data: number[]; transform: Transform }) {
+export function UnderlyingCanvas({ data, numClusters, transform }: { data: number[]; numClusters: number; transform: Transform }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const glRef = useRef<GlState | null>(null);
 
@@ -56,6 +57,8 @@ export function UnderlyingCanvas({ data, transform }: { data: number[]; transfor
         canvas.height = canvas.clientHeight;
 
         const gl = canvas.getContext("webgl")!;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(0, 0, 0, 1);
         const prog = gl.createProgram()!;
         gl.attachShader(prog, compileShader(gl, gl.VERTEX_SHADER, VERT));
         gl.attachShader(prog, compileShader(gl, gl.FRAGMENT_SHADER, FRAG));
@@ -80,9 +83,14 @@ export function UnderlyingCanvas({ data, transform }: { data: number[]; transfor
             minX = Math.min(minX, buf_data[i]);     maxX = Math.max(maxX, buf_data[i]);
             minY = Math.min(minY, buf_data[i + 1]); maxY = Math.max(maxY, buf_data[i + 1]);
         }
-        const sx = 2 / (maxX - minX), sy = 2 / (maxY - minY);
-        gl.uniform2f(gl.getUniformLocation(prog, "u_scale"), sx, sy);
-        gl.uniform2f(gl.getUniformLocation(prog, "u_offset"), -1 - minX * sx, -1 - minY * sy);
+        const midX = (minX + maxX) / 2;
+        const midY = (minY + maxY) / 2;
+        const s = Math.min(canvas.width, canvas.height) / (maxX - minX);
+        const scaleX = s * 2 / canvas.width, scaleY = s * 2 / canvas.height;
+        gl.uniform2f(gl.getUniformLocation(prog, "u_scale"), scaleX, scaleY);
+        gl.uniform2f(gl.getUniformLocation(prog, "u_offset"), -midX * scaleX, -midY * scaleY);
+
+        gl.uniform1f(gl.getUniformLocation(prog, "u_numClusters"), numClusters);
 
         glRef.current = {
             gl,
