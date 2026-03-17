@@ -55,8 +55,8 @@ natsort==8.4.0
 networkx==3.5
 numba==0.62.1
 numcodecs==0.15.1
-numpy==2.3.5
-numpy-typing-compat==20251206.2.4
+numpy==2.2.0
+numpy-typing-compat==20240714.2.4
 ome-zarr==0.11.1
 omnipath==1.0.12
 optype==0.15.0
@@ -117,4 +117,4 @@ xarray-dataclass==3.0.0
 xarray-schema==0.0.3
 xarray-spatial==0.4.0
 yarl==1.22.0
-zarr==2.18.7
+zarr==3.0.8
