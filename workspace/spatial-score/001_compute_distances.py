@@ -19,14 +19,14 @@ args, unknown = parser.parse_known_args()
 input_files = [v for k, v in zip(unknown[::2], unknown[1::2]) if k.startswith('--input')]
 
 
-def df2adata(df, object_id_col, x_coord_col, y_coord_col, phenotype_col, imageid_col='imageid'):
+def df2adata(df, object_id_col, x_coord_col, y_coord_col, phenotype_col, imageid):
     expr = pd.DataFrame({'dummy': [0] * len(df)})
     meta = pd.DataFrame({
         'Object ID': df[object_id_col].values,
         'X_centroid': df[x_coord_col].values,
         'Y_centroid': df[y_coord_col].values,
         'Phenotype': df[phenotype_col].values,
-        'imageid': df[imageid_col].values
+        'imageid': imageid
     })
     adata = ad.AnnData(expr.values)
     adata.var.index = ['dummy']
@@ -36,20 +36,15 @@ def df2adata(df, object_id_col, x_coord_col, y_coord_col, phenotype_col, imageid
 
 
 if __name__ == '__main__':
-    # Merge all input files
-    dfs = []
-    for f in input_files:
-        print(f"Reading {f}...")
-        dfs.append(pd.read_csv(f))
-    df = pd.concat(dfs, ignore_index=True)
-    print(f"Loaded {len(df)} cells total")
-
     tmp_dir = "spatial_distance_raw"
     os.makedirs(tmp_dir, exist_ok=True)
 
-    for image_id, group_df in df.groupby(args.imageid):
-        print(f"Processing imageid={image_id} ({len(group_df)} cells)...")
-        adata = df2adata(group_df, args.object_id, args.centroid_x, args.centroid_y, args.phenotype, args.imageid)
+    for f in input_files:
+        image_id = os.path.basename(f).replace('.csv', '')
+        print(f"Processing {image_id} ({f})...")
+        df = pd.read_csv(f)
+        print(f"  {len(df)} cells")
+        adata = df2adata(df, args.object_id, args.centroid_x, args.centroid_y, args.phenotype, image_id)
 
         adata = sm.tl.spatial_distance(
             adata,
