@@ -1,4 +1,7 @@
 import argparse
+import os
+import shutil
+import zipfile
 import pandas as pd
 import anndata as ad
 import scimap as sm
@@ -9,7 +12,7 @@ parser.add_argument('--centroid-x', type=str, required=True)
 parser.add_argument('--centroid-y', type=str, required=True)
 parser.add_argument('--phenotype', type=str, required=True)
 parser.add_argument('--imageid', type=str, required=True)
-parser.add_argument('--output', type=str, default='data/spatial_distances_output.csv')
+parser.add_argument('--output', type=str, default='data/spatial_distances_output.zip')
 args, unknown = parser.parse_known_args()
 
 # Collect all --inputN arguments
@@ -41,7 +44,9 @@ if __name__ == '__main__':
     df = pd.concat(dfs, ignore_index=True)
     print(f"Loaded {len(df)} cells total")
 
-    results = []
+    tmp_dir = "spatial_distance_raw"
+    os.makedirs(tmp_dir, exist_ok=True)
+
     for image_id, group_df in df.groupby(args.imageid):
         print(f"Processing imageid={image_id} ({len(group_df)} cells)...")
         adata = df2adata(group_df, args.object_id, args.centroid_x, args.centroid_y, args.phenotype, args.imageid)
@@ -57,9 +62,12 @@ if __name__ == '__main__':
         output_df = adata.uns['spatial_distance'].copy()
         output_df = output_df.assign(Phenotype=adata.obs['Phenotype'].values)
         output_df['imageid'] = image_id
-        results.append(output_df)
+        output_df.to_csv(f"{tmp_dir}/{image_id}.csv", index=False)
 
-    merged = pd.concat(results, ignore_index=True)
-    merged.to_csv(args.output, index=False)
-    print(f"Saved {len(merged)} rows to {args.output}")
+    os.makedirs(os.path.dirname(args.output), exist_ok=True)
+    with zipfile.ZipFile(args.output, 'w') as z:
+        for f in os.listdir(tmp_dir):
+            z.write(f"{tmp_dir}/{f}", f)
+    shutil.rmtree(tmp_dir)
+    print(f"Output saved to {args.output}")
     print("Done")

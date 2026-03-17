@@ -1,152 +1,191 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-
-interface FileItem {
-  id: number;
-  file: File | null;
-}
+import Console, { ConsoleHandle } from "@/app/components/console";
+import { useRef, useState } from "react";
+import Link from "next/link";
 
 export default function NearestCellDistance() {
-    // Store the input file to be run by the algorithm
-    const [fileItems, setFileItems] = useState<FileItem[]>([]);
-    const [isProcessing, setIsProcessing] = useState(false);
+    const [headers, setHeaders] = useState<string[][]>([]);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    const [headerSet, setHeaderSet] = useState<Set<string>>(new Set());
+    const [objectId, setObjectId] = useState("");
+    const [centroidX, setCentroidX] = useState("");
+    const [centroidY, setCentroidY] = useState("");
+    const [phenotype, setPhenotype] = useState("");
+    const [imageId, setImageId] = useState("");
+    const consoleRef = useRef<ConsoleHandle>(null);
     const eventSourceRef = useRef<EventSource | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [downloadFilename, setDownloadFilename] = useState<string | null>(null);
 
-    // The list of columns
-    const [columnList, setColumnList] = useState<Set<string>>(new Set());
-
-    // Logs
-    const [logs, setLogs] = useState<string[]>([]);
-
-    // Error message for column mismatch
-    const [error, setError] = useState<string | null>(null);
-
-    // Columns to be selected
-    const [objectIdColumn, setObjectIdColumn] = useState<string|null>(null);
-    const [centroidXColumn, setCentroidXColumn] = useState<string|null>(null);
-    const [centroidYColumn, setCentroidYColumn] = useState<string|null>(null);
-    const [phenotypeColumn, setPhenotypeColumn] = useState<string|null>(null);
-    const [imageIdColumn, setImageIdColumn] = useState<string|null>(null);
-
-    const getDataColumns = (text: string): Set<string> =>
-        new Set(text.split("\n")[0].split(",").map(c => c.trim()));
-
-    const handleFile = (id: number, e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setError(null);
-        const reader = new FileReader();
-        reader.onload = () => {
-            const cols = getDataColumns(reader.result as string);
-            setFileItems((prev) => {
-                const exists = prev.find((item) => item.id === id);
-                if (exists) return prev.map((item) => item.id === id ? { ...item, file } : item);
-                return [...prev, { id, file }];
-            });
-            setColumnList((prev) => prev.size === 0 ? cols : new Set([...prev].filter(c => cols.has(c))));
-        };
-        reader.readAsText(file);
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(event.target.files ?? []);
+        setSelectedFiles(files);
+        const results = await Promise.all(
+            files.map(file => file.text().then(text => text.split(/\r?\n/)[0].split(",")))
+        );
+        setHeaders(results);
+        const intersection = results.reduce((acc, cur) => acc.filter(h => cur.includes(h)));
+        setHeaderSet(new Set(intersection));
     };
 
-    const handleSubmit = async () => {
+    const columnSelect = (value: string, onChange: (v: string) => void, label: string) => (
+        <div>
+            <label className="text-xs text-slate-400 uppercase tracking-wider block mb-1.5">{label}</label>
+            <select value={value} onChange={e => onChange(e.target.value)}
+                className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors">
+                <option value="">— select —</option>
+                {[...headerSet].map(h => <option key={h} value={h}>{h}</option>)}
+            </select>
+        </div>
+    );
+
+    const handleRun = async () => {
         setIsProcessing(true);
-        setLogs([]);
+        consoleRef.current?.clearLogs();
 
-        try {
-            const uploadedFilenames: string[] = [];
-
-            for (const item of fileItems) {
-                setLogs((prev) => [...prev, `Uploading ${item.file!.name}...`]);
-
+        const bar = (pct: number) => {
+            const filled = Math.round(pct / 5);
+            return `[${'#'.repeat(filled)}${'-'.repeat(20 - filled)}] ${pct}%`;
+        };
+        const uploadFile = (file: File, idx: number): Promise<any> =>
+            new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
                 const formData = new FormData();
-                formData.append("file", item.file!);
-                const uploadResponse = await fetch("/api/upload-file", { method: "POST", body: formData });
-                const result = await uploadResponse.json();
-                if (!result.success) throw new Error("File upload failed");
-
-                uploadedFilenames.push(result.filename);
-            }
-
-            setLogs((prev) => [...prev, "Starting script..."]);
-            const params = new URLSearchParams({
-                script: "spatial_score/001_compute_distances.py",
-                ...Object.fromEntries(uploadedFilenames.map((f, i) => [`input${i + 1}`, `data/${f}`])),
-                "object-id": objectIdColumn!,
-                "centroid-x": centroidXColumn!,
-                "centroid-y": centroidYColumn!,
-                phenotype: phenotypeColumn!,
-                imageid: imageIdColumn!,
+                formData.append("file", file);
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable)
+                        consoleRef.current!.pushLog(`${file.name} ${bar(Math.round(e.loaded / e.total * 100))}`, idx);
+                };
+                xhr.onload = () => resolve(JSON.parse(xhr.responseText));
+                xhr.onerror = () => reject(new Error("Upload failed"));
+                xhr.open("POST", "/api/upload-file");
+                xhr.send(formData);
             });
 
-            const eventSource = new EventSource(`/api/run-python?${params.toString()}`);
-            eventSourceRef.current = eventSource;
+        const uploadedFilenames: string[] = [];
+        for (const file of selectedFiles) {
+            const idx = consoleRef.current!.pushLog(`${file.name} ${bar(0)}`);
+            const uploadResult = await uploadFile(file, idx);
+            if (!uploadResult.success) {
+                consoleRef.current!.pushLog(`ERROR: Failed to upload ${file.name}`, idx);
+                setIsProcessing(false);
+                return;
+            }
+            uploadedFilenames.push(uploadResult.path);
+        }
 
-            eventSource.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.type === "stdout") {
-                    setLogs((prev) => [...prev, data.content]);
-                } else if (data.type === "stderr") {
-                    setLogs((prev) => [...prev, `ERROR: ${data.content}`]);
-                } else if (data.type === "complete") {
-                    setLogs((prev) => [...prev, `Process completed with exit code: ${data.exitCode}`]);
-                    eventSource.close();
-                    eventSourceRef.current = null;
-                    setIsProcessing(false);
-                } else if (data.type === "error") {
-                    setLogs((prev) => [...prev, `ERROR: ${data.message}`]);
-                    eventSource.close();
-                    eventSourceRef.current = null;
-                    setIsProcessing(false);
-                }
-            };
-            eventSource.onerror = () => {
-                setLogs((prev) => [...prev, "Connection error"]);
+        const uuid = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36);
+        const outputFilename = `data/${uuid}.zip`;
+        const params = new URLSearchParams({
+            script: "spatial_score/001_compute_distances.py",
+            ...Object.fromEntries(uploadedFilenames.map((f, i) => [`input${i + 1}`, f])),
+            "object-id": objectId,
+            "centroid-x": centroidX,
+            "centroid-y": centroidY,
+            phenotype,
+            imageid: imageId,
+            output: outputFilename,
+        });
+
+        const eventSource = new EventSource(`/api/run-python?${params.toString()}`);
+        eventSourceRef.current = eventSource;
+        eventSource.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === "acknowledgment") {
+                consoleRef.current?.pushLog(data.message);
+            } else if (data.type === "stdout") {
+                consoleRef.current?.pushLog(data.content);
+            } else if (data.type === "stderr") {
+                consoleRef.current?.pushLog(`ERROR: ${data.content}`);
+            } else if (data.type === "complete") {
+                consoleRef.current?.pushLog(`Process completed with exit code: ${data.exitCode}`);
+                if (data.exitCode === 0 && data.outputFilename) setDownloadFilename(data.outputFilename);
                 eventSource.close();
                 eventSourceRef.current = null;
                 setIsProcessing(false);
-            };
-        } catch (error: any) {
-            setLogs((prev) => [...prev, `Error: ${error.message}`]);
+            } else if (data.type === "error") {
+                consoleRef.current?.pushLog(`ERROR: ${data.message}`);
+                eventSource.close();
+                eventSourceRef.current = null;
+                setIsProcessing(false);
+            }
+        };
+        eventSource.onerror = () => {
+            consoleRef.current?.pushLog("Connection error");
+            eventSource.close();
+            eventSourceRef.current = null;
             setIsProcessing(false);
-        }
+        };
     };
 
-    useEffect(() => {
-        return () => { eventSourceRef.current?.close(); };
-    }, []);
+    return (
+        <div className="min-h-screen bg-slate-950 text-slate-100 p-6">
+            <div className="max-w-6xl mx-auto">
+                <header className="mb-6">
+                    <Link href="/" className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-slate-300 transition-colors mb-4">
+                        ← Back to home
+                    </Link>
+                    <div className="flex items-center gap-4">
+                        <h1 className="text-2xl font-light text-slate-100 tracking-wide">
+                            Spatial Score: Nearest Cell Distance
+                        </h1>
+                        {isProcessing && (
+                            <span className="text-xs text-red-400 font-medium uppercase tracking-wider animate-pulse">
+                                Do not close this page
+                            </span>
+                        )}
+                    </div>
+                    <div className="h-px bg-gradient-to-r from-slate-700 via-slate-600 to-transparent mt-2"></div>
+                </header>
 
-    return (<>
-        <input type="file" accept=".csv" onChange={(e) => handleFile(1, e)} />
-        <input type="file" accept=".csv" onChange={(e) => handleFile(2, e)} />
-        <input type="file" accept=".csv" onChange={(e) => handleFile(3, e)} />
-        <input type="file" accept=".csv" onChange={(e) => handleFile(4, e)} />
-        {error && <p style={{ color: "red" }}>{error}</p>}
-        <hr/>
-        <select disabled={!columnList.size} value={objectIdColumn ?? ""} onChange={(e) => setObjectIdColumn(e.target.value)}>
-            <option value="">Object ID</option>
-            {[...columnList].map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select disabled={!columnList.size} value={centroidXColumn ?? ""} onChange={(e) => setCentroidXColumn(e.target.value)}>
-            <option value="">Centroid X</option>
-            {[...columnList].map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select disabled={!columnList.size} value={centroidYColumn ?? ""} onChange={(e) => setCentroidYColumn(e.target.value)}>
-            <option value="">Centroid Y</option>
-            {[...columnList].map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select disabled={!columnList.size} value={phenotypeColumn ?? ""} onChange={(e) => setPhenotypeColumn(e.target.value)}>
-            <option value="">Phenotype</option>
-            {[...columnList].map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select disabled={!columnList.size} value={imageIdColumn ?? ""} onChange={(e) => setImageIdColumn(e.target.value)}>
-            <option value="">Image ID</option>
-            {[...columnList].map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <hr/>
-        <button onClick={handleSubmit} disabled={isProcessing || !fileItems.length}>
-            {isProcessing ? "Running..." : "Submit"}
-        </button>
-        <pre>{logs.join("\n")}</pre>
-    </>);
+                <div className="mb-6 space-y-4">
+                    <div>
+                        <label className="text-xs text-slate-400 uppercase tracking-wider block mb-1.5">Input Files</label>
+                        <input type="file" multiple accept=".csv" onChange={handleFileChange}
+                            className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        {columnSelect(objectId, setObjectId, "Object ID Column")}
+                        {columnSelect(centroidX, setCentroidX, "Centroid X Column")}
+                        {columnSelect(centroidY, setCentroidY, "Centroid Y Column")}
+                        {columnSelect(phenotype, setPhenotype, "Phenotype Column")}
+                        {columnSelect(imageId, setImageId, "Image ID Column")}
+                    </div>
+                    <div className="flex gap-3 items-center">
+                        <button onClick={handleRun} disabled={isProcessing}
+                            className="px-5 py-1.5 bg-slate-800 text-slate-200 text-sm hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 disabled:cursor-not-allowed transition-colors">
+                            {isProcessing ? "Running..." : "Run"}
+                        </button>
+                        {downloadFilename && !isProcessing && (
+                            <a href={`/api/download-file?filename=${downloadFilename}`} download
+                                className="px-3 py-1 bg-emerald-900/50 text-emerald-400 text-xs hover:bg-emerald-900/70 transition-colors">
+                                ↓ Download ZIP
+                            </a>
+                        )}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                    <div>
+                        <Console ref={consoleRef} />
+                    </div>
+                    <div>
+                        <h2 className="text-sm font-light text-slate-400 uppercase tracking-wider mb-3">Output File</h2>
+                        <div className="bg-slate-900/50 backdrop-blur border-l border-slate-800 h-[calc(100vh-480px)] overflow-auto flex items-center justify-center p-3">
+                            {!isProcessing && downloadFilename ? (
+                                <div className="text-slate-300 text-center">
+                                    <div className="text-emerald-400 text-lg mb-2">✓</div>
+                                    <div className="text-sm">Output ready for download</div>
+                                    <div className="text-xs text-slate-500 mt-1">{downloadFilename.replace(/^data\//, "")}</div>
+                                </div>
+                            ) : (
+                                <div className="text-slate-600 italic text-sm">No output generated yet...</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 }

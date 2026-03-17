@@ -37,6 +37,10 @@ env
 .DS_Store
 Thumbs.db
 
+# Workspace (mounted as volume at runtime)
+workspace
+test_venv
+
 # Testing
 coverage
 .pytest_cache
