@@ -144,6 +144,38 @@ export default function Home() {
             </div>
           </section>
 
+          {/* Spatial Score Pipeline */}
+          <section>
+            <h2 className="text-lg font-light text-slate-300 mb-3 tracking-wide">
+              Spatial Score Pipeline
+            </h2>
+            <div className="grid gap-2">
+              <Link
+                href="/spatial-score/nearest-cell-distance"
+                className="block px-4 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 transition-colors"
+              >
+                <h3 className="text-sm font-medium text-slate-100">
+                  Step 1: Nearest Cell Distance
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Compute per-cell distances to each phenotype using spatial coordinates
+                </p>
+              </Link>
+
+              <Link
+                href="/spatial-score/compute-ratios"
+                className="block px-4 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 transition-colors"
+              >
+                <h3 className="text-sm font-medium text-slate-100">
+                  Step 2: Compute Ratios
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Compute reference/effector distance ratios per target phenotype and image
+                </p>
+              </Link>
+            </div>
+          </section>
+
           {/* Other Tools */}
           <section>
             <h2 className="text-lg font-light text-slate-300 mb-3 tracking-wide">
