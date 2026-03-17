@@ -1,4 +1,4 @@
-# Use an image with both Python and Node.js
+#Use an image with both Python and Node.js
 FROM nikolaik/python-nodejs:python3.11-nodejs24
 
 WORKDIR /app
