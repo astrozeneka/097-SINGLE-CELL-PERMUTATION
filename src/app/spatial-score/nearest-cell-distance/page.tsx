@@ -78,7 +78,7 @@ export default function NearestCellDistance() {
         const uuid = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36);
         const outputFilename = `data/${uuid}.zip`;
         const params = new URLSearchParams({
-            script: "spatial_score/001_compute_distances.py",
+            script: "spatial-score/001_compute_distances.py",
             ...Object.fromEntries(uploadedFilenames.map((f, i) => [`input${i + 1}`, f])),
             "object-id": objectId,
             "centroid-x": centroidX,
