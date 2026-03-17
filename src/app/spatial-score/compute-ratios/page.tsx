@@ -1,15 +1,28 @@
-import { useState } from "react";
+"use client";
+
+import { useState, useEffect } from "react";
 
 
 export default function ComputeRatios() {
 
-    
+
     const [headers, setHeaders] = useState<string[][]>([]);
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [headerSet, setHeaderSet] = useState<Set<string>>(new Set());
-        
+
     const [phenotypeColumn, setPhenotypeColumn] = useState("");
+    const [imageidColumn, setImageidColumn] = useState("");
     const [phenotypeSet, setPhenotypeSet] = useState<Set<string>>(new Set());
+
+    useEffect(() => {
+        if (!phenotypeColumn || !imageidColumn) return;
+        const excluded = new Set([phenotypeColumn, imageidColumn]);
+        const union = headers.reduce((acc, hdrs) => {
+            hdrs.filter(h => !excluded.has(h)).forEach(h => acc.add(h));
+            return acc;
+        }, new Set<string>());
+        setPhenotypeSet(union);
+    }, [phenotypeColumn, imageidColumn, headers]);
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(event.target.files ?? []);
@@ -33,6 +46,8 @@ export default function ComputeRatios() {
         </div>
     );
 
+    const stateCheck = phenotypeColumn && imageidColumn;
+
     return (
         <div>
             <div>
@@ -42,7 +57,13 @@ export default function ComputeRatios() {
             </div>
             <div>
                 {columnSelect(phenotypeColumn, setPhenotypeColumn, "Phenotype Column")}
+                {columnSelect(imageidColumn, setImageidColumn, "Image ID Column")}
             </div>
+            {stateCheck && (
+                <div>
+                    sdf
+                </div>
+            )}
         </div>
     )
 }
