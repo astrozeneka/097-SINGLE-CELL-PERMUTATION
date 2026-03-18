@@ -173,6 +173,30 @@ export default function Home() {
                   Compute reference/effector distance ratios per target phenotype and image
                 </p>
               </Link>
+
+              <Link
+                href="/spatial-score/003_stats"
+                className="block px-4 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 transition-colors"
+              >
+                <h3 className="text-sm font-medium text-slate-100">
+                  Step 3: Stats
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Pairwise Mann-Whitney U test across groups
+                </p>
+              </Link>
+
+              <Link
+                href="/spatial-score/004_boxplot"
+                className="block px-4 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 transition-colors"
+              >
+                <h3 className="text-sm font-medium text-slate-100">
+                  Step 4: Boxplot
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Visualize selected target/effector pairs as grouped boxplots
+                </p>
+              </Link>
             </div>
           </section>
 
