@@ -7,6 +7,7 @@ from itertools import combinations
 parser = argparse.ArgumentParser()
 parser.add_argument('--input', required=True)
 parser.add_argument('--tuples', required=True)
+parser.add_argument('--reference', default='')
 parser.add_argument('--output', required=True)
 args = parser.parse_args()
 
@@ -16,9 +17,10 @@ group_names = [c[:-5] for c in df.columns if c.endswith('_vals')]
 selected = [t.split('|') for t in args.tuples.split(',')]
 df = df[df.apply(lambda r: [r['target'], r['effector']] in selected, axis=1)].reset_index(drop=True)
 
+ref_suffix = f" ↔ {args.reference}" if args.reference else ""
 rows = []
 for _, row in df.iterrows():
-    label = f"{row['target']} → {row['effector']}"
+    label = f"{row['effector']} ↔ {row['target']}{ref_suffix}"
     for g in group_names:
         vals = [float(v) for v in str(row[f'{g}_vals']).split(',') if v.strip() not in ('', 'nan')]
         for v in vals:

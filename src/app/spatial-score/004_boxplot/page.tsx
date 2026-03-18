@@ -24,6 +24,7 @@ export default function Boxplot() {
     const [serverPath, setServerPath] = useState<string | null>(null);
     const [plotImageUrl, setPlotImageUrl] = useState<string | null>(null);
     const [isPlotting, setIsPlotting] = useState(false);
+    const [reference, setReference] = useState("");
     const consoleRef = useRef<ConsoleHandle>(null);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,6 +75,7 @@ export default function Boxplot() {
             script: "spatial-score/004_boxplot.py",
             input: serverPath,
             tuples,
+            reference,
             output: `data/${outputFilename}`,
         });
 
@@ -114,10 +116,18 @@ export default function Boxplot() {
                 </header>
 
                 <div className="mb-6 space-y-4">
-                    <div>
-                        <label className="text-xs text-slate-400 uppercase tracking-wider block mb-1.5">Input File</label>
-                        <input type="file" accept=".csv" onChange={handleFileChange}
-                            className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700" />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs text-slate-400 uppercase tracking-wider block mb-1.5">Input File</label>
+                            <input type="file" accept=".csv" onChange={handleFileChange}
+                                className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700" />
+                        </div>
+                        <div>
+                            <label className="text-xs text-slate-400 uppercase tracking-wider block mb-1.5">Reference Cell</label>
+                            <input type="text" value={reference} onChange={e => setReference(e.target.value)}
+                                placeholder="e.g. Tumor_cells"
+                                className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors" />
+                        </div>
                     </div>
 
                     {tableRows.length > 0 && (
