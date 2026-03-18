@@ -75,9 +75,12 @@ export default function Boxplot() {
 
         const params = new URLSearchParams();
         params.append('script', 'spatial-score/003_stats.py');
-        for (const [groupKey, paths] of Object.entries(groupUploadedPaths))
-            for (const path of paths)
+        for (let i = 0; i < groups.length; i++) {
+            const groupKey = `group${i + 1}`;
+            params.append(`groupname${i + 1}`, groups[i].name || groupKey);
+            for (const path of groupUploadedPaths[groupKey])
                 params.append(groupKey, path);
+        }
         params.append('output', `data/${outputFilename}`);
 
         const eventSource = new EventSource(`/api/run-python?${params.toString()}`);
