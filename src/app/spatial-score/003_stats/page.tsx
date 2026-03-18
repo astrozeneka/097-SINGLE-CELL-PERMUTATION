@@ -11,7 +11,7 @@ type Group = { name: string; files: File[] };
 
 const emptyGroup = (): Group => ({ name: "", files: [] });
 
-export default function Boxplot() {
+export default function Stats() {
     const [groups, setGroups] = useState<Group[]>([emptyGroup(), emptyGroup()]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [downloadFilename, setDownloadFilename] = useState<string | null>(null);
