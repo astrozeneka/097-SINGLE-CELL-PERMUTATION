@@ -8,8 +8,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--input', required=True)
 parser.add_argument('--tuples', required=True)
 parser.add_argument('--reference', default='')
+parser.add_argument('--colors', default='')
+parser.add_argument('--xtick_rotation', type=int, default=15)
 parser.add_argument('--output', required=True)
 args = parser.parse_args()
+
+color_overrides = dict(pair.split(':') for pair in args.colors.split(',') if ':' in pair)
 
 df = pd.read_csv(args.input)
 group_names = [c[:-5] for c in df.columns if c.endswith('_vals')]
@@ -32,8 +36,8 @@ step = 0.8 / n
 offsets = {g: (i - (n - 1) / 2) * step for i, g in enumerate(group_names)}
 
 fig, ax = plt.subplots(figsize=(max(5, len(df) * 2.5), 5))
-palette = sns.color_palette("Set2", n)
-group_palette = dict(zip(group_names, palette))
+default_palette = sns.color_palette("Set2", n)
+group_palette = {g: color_overrides.get(g, default_palette[i]) for i, g in enumerate(group_names)}
 
 sns.boxplot(data=long_df, x='pair', y='ratio', hue='group', ax=ax,
             palette=group_palette, showfliers=False, width=0.8, gap=0.12, legend=True)
@@ -65,7 +69,7 @@ ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
 ax.set_xlabel('')
 ax.set_ylabel('Spatial ratio')
-ax.set_xticklabels(ax.get_xticklabels(), rotation=15, ha='right', fontsize=8)
+ax.set_xticklabels(ax.get_xticklabels(), rotation=args.xtick_rotation, ha='right' if args.xtick_rotation > 0 else 'center', fontsize=8)
 ax.tick_params(axis='x', pad=5)
 plt.tight_layout()
 plt.savefig(args.output, dpi=330, transparent=False)

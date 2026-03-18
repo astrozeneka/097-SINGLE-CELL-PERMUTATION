@@ -4,6 +4,8 @@ import { useState, useRef } from "react";
 import Console, { ConsoleHandle } from "@/app/components/console";
 import Link from "next/link";
 
+const SET2 = ["#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f"];
+
 const parseCSVLine = (line: string) => {
     const fields: string[] = [];
     let cur = "", inQuote = false;
@@ -19,18 +21,20 @@ const parseCSVLine = (line: string) => {
 export default function Boxplot() {
     const [tableRows, setTableRows] = useState<Record<string, string>[]>([]);
     const [displayCols, setDisplayCols] = useState<string[]>([]);
+    const [groupNames, setGroupNames] = useState<string[]>([]);
     const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
-    const [inputFile, setInputFile] = useState<File | null>(null);
     const [serverPath, setServerPath] = useState<string | null>(null);
     const [plotImageUrl, setPlotImageUrl] = useState<string | null>(null);
     const [isPlotting, setIsPlotting] = useState(false);
     const [reference, setReference] = useState("");
+    const [showAdvanced, setShowAdvanced] = useState(false);
+    const [xtickRotation, setXtickRotation] = useState(15);
+    const [groupColors, setGroupColors] = useState<Record<string, string>>({});
     const consoleRef = useRef<ConsoleHandle>(null);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        setInputFile(file);
         setServerPath(null);
         setPlotImageUrl(null);
         setSelectedRows(new Set());
@@ -38,14 +42,15 @@ export default function Boxplot() {
         const text = await file.text();
         const lines = text.trim().split(/\r?\n/);
         const headers = parseCSVLine(lines[0]);
+        const groups = headers.filter(h => h.endsWith('_vals')).map(h => h.slice(0, -5));
+        setGroupNames(groups);
+        setGroupColors(Object.fromEntries(groups.map((g, i) => [g, SET2[i % SET2.length]])));
         setDisplayCols(headers.filter(h => !h.endsWith('_vals')));
-        const rows = lines.slice(1).map(line => {
+        setTableRows(lines.slice(1).map(line => {
             const values = parseCSVLine(line);
             return Object.fromEntries(headers.map((h, i) => [h, values[i] ?? ""]));
-        });
-        setTableRows(rows);
+        }));
 
-        // Upload immediately so plot is fast
         const formData = new FormData();
         formData.append("file", file);
         const result = await fetch("/api/upload-file", { method: "POST", body: formData }).then(r => r.json());
@@ -65,9 +70,8 @@ export default function Boxplot() {
         setIsPlotting(true);
         consoleRef.current?.clearLogs();
 
-        const tuples = [...selectedRows]
-            .map(i => `${tableRows[i]['target']}|${tableRows[i]['effector']}`)
-            .join(",");
+        const tuples = [...selectedRows].map(i => `${tableRows[i]['target']}|${tableRows[i]['effector']}`).join(",");
+        const colors = groupNames.map(g => `${g}:${groupColors[g]}`).join(",");
         const uuid = Math.random().toString(36).slice(2) + Date.now().toString(36);
         const outputFilename = `${uuid}.png`;
 
@@ -76,6 +80,8 @@ export default function Boxplot() {
             input: serverPath,
             tuples,
             reference,
+            colors,
+            xtick_rotation: String(xtickRotation),
             output: `data/${outputFilename}`,
         });
 
@@ -128,6 +134,39 @@ export default function Boxplot() {
                                 placeholder="e.g. Tumor_cells"
                                 className="w-full px-3 py-1.5 bg-slate-900 text-slate-200 text-sm border-b border-slate-700 focus:border-slate-500 focus:outline-none transition-colors" />
                         </div>
+                    </div>
+
+                    {/* Advanced */}
+                    <div>
+                        <button onClick={() => setShowAdvanced(p => !p)}
+                            className="text-xs text-slate-500 hover:text-slate-400 transition-colors tracking-wider">
+                            {showAdvanced ? "− advanced" : "+ advanced"}
+                        </button>
+                        {showAdvanced && (
+                            <div className="mt-3 pl-3 border-l border-slate-800 space-y-3">
+                                <div className="flex items-center gap-4">
+                                    <label className="text-xs text-slate-500 uppercase tracking-wider w-32">X-tick rotation</label>
+                                    <input type="number" min={0} max={90} value={xtickRotation}
+                                        onChange={e => setXtickRotation(Number(e.target.value))}
+                                        className="w-20 px-2 py-1 bg-slate-900 text-slate-300 text-xs border-b border-slate-700 focus:border-slate-500 focus:outline-none" />
+                                </div>
+                                {groupNames.length > 0 && (
+                                    <div className="flex items-center gap-4 flex-wrap">
+                                        <span className="text-xs text-slate-500 uppercase tracking-wider w-32">Group colors</span>
+                                        <div className="flex gap-4 flex-wrap">
+                                            {groupNames.map(g => (
+                                                <div key={g} className="flex items-center gap-1.5">
+                                                    <input type="color" value={groupColors[g] ?? "#66c2a5"}
+                                                        onChange={e => setGroupColors(prev => ({ ...prev, [g]: e.target.value }))}
+                                                        className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent" />
+                                                    <span className="text-xs text-slate-400">{g}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {tableRows.length > 0 && (
