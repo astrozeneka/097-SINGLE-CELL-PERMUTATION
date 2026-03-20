@@ -1,7 +1,7 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import sample_data_csv from "./brush-2d/sample_data_csv";
-import { ShaderInjection, UnderlyingCanvas } from "./underlying-canvas";
+import { ShaderInjection, Transform, UnderlyingCanvas } from "./underlying-canvas";
 import { OverlyingCanvas } from "./overlying-canvas";
 
 interface _Cell {
@@ -38,25 +38,39 @@ const byColorEncoder: ColorEncoder = {
 }
 
 
+const INIT_TRANSFORM: Transform = { x: 0, y: 0, scale: 1 };
+
 export default function Viewer2d(params: Viewer2dParams) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [size, setSize]           = useState({ w: 0, h: 0 });
+    const [transform, setTransform] = useState<Transform>(INIT_TRANSFORM);
+
     useEffect(() => {
-        // DRAFT CODE FOR TESTING
-        const data: _Cell[] = sample_data_csv.split("\n").slice(1).map(line => {
-            const [id, x, y, cluster] = line.split(",");
-            return {
-                id,
-                x: parseFloat(x),
-                y: parseFloat(y),
-                z: 0,
-                cluster: parseInt(cluster)
-            };
+        const ro = new ResizeObserver(([entry]) => {
+            const { width, height } = entry.contentRect;
+            setSize({ w: width, h: height });
         });
+        ro.observe(containerRef.current!);
+        return () => ro.disconnect();
     }, []);
 
+    const data: _Cell[] = useMemo(() =>
+        sample_data_csv.split("\n").slice(1).filter(Boolean).map(line => {
+            const [id, x, y, cluster] = line.split(",");
+            return { id, x: parseFloat(x), y: parseFloat(y), cluster: parseInt(cluster) };
+        }), []);
+
     return (
-        <div>
-            <OverlyingCanvas></OverlyingCanvas>
-            <UnderlyingCanvas></UnderlyingCanvas>
+        <div ref={containerRef} style={{ position: "relative", width: "100%", height: "100vh" }}>
+            <UnderlyingCanvas
+                data={data}
+                xAccessor={d => d.x}
+                yAccessor={d => d.y}
+                colorEncoder={byColorEncoder as any}
+                transform={transform}
+                size={size}
+            />
+            <OverlyingCanvas size={size} transform={transform} onTransform={setTransform} />
         </div>
     );
 }
