@@ -47,10 +47,15 @@ export function OverlyingCanvas({ size, mode, transform, onTransform, onSelect, 
 
     // Reset mode-specific state and clear overlay when switching modes.
     useEffect(() => {
-        if (mode !== "select")  rectStart.current  = null;
-        if (mode !== "polygon") polyPoints.current = [];
+        if (mode !== "select") rectStart.current = null;
+        if (mode !== "polygon") {
+            const pts = polyPoints.current.slice(0, -1); // drop the last dangling point
+            polyPoints.current = [];
+            if (pts.length >= 3)
+                onSelectPolygon(pts.map(p => fromBaseClip(p.bx, p.by, size, transform)), false);
+        }
         ref.current!.getContext("2d")!.clearRect(0, 0, size.w, size.h);
-    }, [mode]);
+    }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
     function canvasPos(e: React.MouseEvent) {
         const r = ref.current!.getBoundingClientRect();
