@@ -2,7 +2,7 @@
 import { useEffect, useRef } from "react";
 import { Transform } from "./underlying-canvas";
 
-export type CanvasMode = "pan" | "select";
+export type CanvasMode = "pan" | "select" | "polygon";
 
 interface OverlyingCanvasParams {
     size: { w: number; h: number };
@@ -11,19 +11,21 @@ interface OverlyingCanvasParams {
     onTransform: (t: Transform) => void;
     // Rect corners in canvas pixel coordinates (origin = canvas top-left).
     onSelect: (rect: { x1: number; y1: number; x2: number; y2: number }) => void;
+    // Polygon vertices in canvas pixel coordinates. Called live during draw and on finalize.
+    onSelectPolygon: (points: { x: number; y: number }[]) => void;
 }
 
-export function OverlyingCanvas({ size, mode, transform, onTransform, onSelect }: OverlyingCanvasParams) {
-    const ref      = useRef<HTMLCanvasElement>(null);
-    const drag     = useRef<{ startX: number; startY: number; tx: number; ty: number } | null>(null);
-    const rectStart = useRef<{ x: number; y: number } | null>(null);
+export function OverlyingCanvas({ size, mode, transform, onTransform, onSelect, onSelectPolygon }: OverlyingCanvasParams) {
+    const ref        = useRef<HTMLCanvasElement>(null);
+    const drag       = useRef<{ startX: number; startY: number; tx: number; ty: number } | null>(null);
+    const rectStart  = useRef<{ x: number; y: number } | null>(null);
+    const polyPoints = useRef<{ x: number; y: number }[]>([]);
 
-    // Clear 2D overlay and reset state when leaving select mode.
+    // Reset mode-specific state and clear overlay when switching modes.
     useEffect(() => {
-        if (mode !== "select") {
-            rectStart.current = null;
-            ref.current!.getContext("2d")!.clearRect(0, 0, size.w, size.h);
-        }
+        if (mode !== "select")  rectStart.current  = null;
+        if (mode !== "polygon") polyPoints.current = [];
+        ref.current!.getContext("2d")!.clearRect(0, 0, size.w, size.h);
     }, [mode]);
 
     function canvasPos(e: React.MouseEvent) {
@@ -41,12 +43,28 @@ export function OverlyingCanvas({ size, mode, transform, onTransform, onSelect }
         ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
     }
 
+    function drawPolygonPreview(points: { x: number; y: number }[], cx: number, cy: number) {
+        const ctx = ref.current!.getContext("2d")!;
+        ctx.clearRect(0, 0, size.w, size.h);
+        if (points.length === 0) return;
+        ctx.fillStyle   = "rgba(255, 255, 255, 0.08)";
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
+        ctx.lineWidth   = 1;
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+        ctx.lineTo(cx, cy);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+    }
+
     return (
         <canvas
             ref={ref}
             width={size.w}
             height={size.h}
-            style={{ position: "absolute", inset: 0, cursor: mode === "select" ? "crosshair" : "grab" }}
+            style={{ position: "absolute", inset: 0, cursor: mode === "pan" ? "grab" : "crosshair" }}
             onWheel={e => {
                 const r = ref.current!.getBoundingClientRect();
                 const dx = e.clientX - r.left - size.w / 2;
@@ -64,20 +82,38 @@ export function OverlyingCanvas({ size, mode, transform, onTransform, onSelect }
                 } else if (mode === "select" && rectStart.current) {
                     const { x, y } = canvasPos(e);
                     drawPreview(rectStart.current.x, rectStart.current.y, x, y);
+                } else if (mode === "polygon" && polyPoints.current.length > 0) {
+                    const { x, y } = canvasPos(e);
+                    drawPolygonPreview(polyPoints.current, x, y);
+                    // Live buffer update: need at least 2 placed points so cursor forms a triangle.
+                    if (polyPoints.current.length >= 2)
+                        onSelectPolygon([...polyPoints.current, { x, y }]);
                 }
             }}
             onMouseUp={()   => { drag.current = null; }}
             onMouseLeave={() => { drag.current = null; }}
             onClick={e => {
-                if (mode !== "select") return;
-                const { x, y } = canvasPos(e);
-                if (!rectStart.current) {
-                    rectStart.current = { x, y };
-                } else {
-                    onSelect({ x1: rectStart.current.x, y1: rectStart.current.y, x2: x, y2: y });
-                    rectStart.current = null;
-                    ref.current!.getContext("2d")!.clearRect(0, 0, size.w, size.h);
+                if (mode === "select") {
+                    const { x, y } = canvasPos(e);
+                    if (!rectStart.current) {
+                        rectStart.current = { x, y };
+                    } else {
+                        onSelect({ x1: rectStart.current.x, y1: rectStart.current.y, x2: x, y2: y });
+                        rectStart.current = null;
+                        ref.current!.getContext("2d")!.clearRect(0, 0, size.w, size.h);
+                    }
+                } else if (mode === "polygon") {
+                    const { x, y } = canvasPos(e);
+                    polyPoints.current = [...polyPoints.current, { x, y }];
                 }
+            }}
+            onDoubleClick={e => {
+                if (mode !== "polygon") return;
+                // The 2nd click of the double-click already pushed a duplicate point via onClick — remove it.
+                const pts = polyPoints.current.slice(0, -1);
+                polyPoints.current = [];
+                ref.current!.getContext("2d")!.clearRect(0, 0, size.w, size.h);
+                if (pts.length >= 3) onSelectPolygon(pts);
             }}
         />
     );

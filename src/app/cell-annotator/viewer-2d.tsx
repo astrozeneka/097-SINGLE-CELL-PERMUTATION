@@ -25,8 +25,18 @@ abstract class AbstractViewerController<T> {
 // can be included as a uniform value once parsed from the data.
 
 // Screen pixel → data coordinate. Mirrors the vertex shader transform so
-// selection rectangles can be mapped back into data space for the O(N) test.
+// selection shapes can be mapped back into data space for the O(N) test.
 type Bounds = { minX: number; maxX: number; minY: number; maxY: number };
+
+function pointInPolygon(px: number, py: number, poly: { x: number; y: number }[]) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
+        if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi)
+            inside = !inside;
+    }
+    return inside;
+}
 function screenToData(px: number, py: number, b: Bounds, size: { w: number; h: number }, t: Transform) {
     const dataW = b.maxX - b.minX, dataH = b.maxY - b.minY;
     const s  = (dataW / dataH > size.w / size.h) ? size.w / dataW : size.h / dataH;
@@ -105,6 +115,15 @@ export default function Viewer2d(_params: Viewer2dParams) {
         setSelectionMask(mask);
     }, [bounds, data]);
 
+    // O(N) membership test: convert screen polygon → data coords, ray-cast each cell.
+    const onSelectPolygon = useCallback((screenPoints: { x: number; y: number }[]) => {
+        const poly = screenPoints.map(p => screenToData(p.x, p.y, bounds, sizeRef.current, transformRef.current));
+        const mask = new Float32Array(data.length);
+        for (let i = 0; i < data.length; i++)
+            mask[i] = pointInPolygon(data[i].x, data[i].y, poly) ? 1 : 0;
+        setSelectionMask(mask);
+    }, [bounds, data]);
+
     return (
         <div ref={containerRef} style={{ position: "relative", width: "100%", height: "100vh" }}>
             <UnderlyingCanvas
@@ -122,10 +141,11 @@ export default function Viewer2d(_params: Viewer2dParams) {
                 transform={transform}
                 onTransform={setTransform}
                 onSelect={onSelect}
+                onSelectPolygon={onSelectPolygon}
             />
             <div style={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 8 }}>
-                <button onClick={() => setMode(m => m === "pan" ? "select" : "pan")}>
-                    {mode === "pan" ? "Select mode" : "Pan mode"}
+                <button onClick={() => setMode(m => m === "pan" ? "select" : m === "select" ? "polygon" : "pan")}>
+                    {mode === "pan" ? "Select mode" : mode === "select" ? "Polygon mode" : "Pan mode"}
                 </button>
                 {selectionMask && (
                     <button onClick={() => setSelectionMask(null)}>Clear selection</button>
