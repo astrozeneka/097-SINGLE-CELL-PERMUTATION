@@ -9,106 +9,102 @@ export interface ShaderInjection {
 
 // ---------------------------------------------------------------------------
 // ColorEncoder<T>
-// Describes how to color each point entirely from the consumer side.
-// The canvas auto-generates shader declarations and builds the interleaved
-// buffer — the consumer only writes the domain-specific parts.
+// Fully describes how to color each point. The canvas compiles colorGlsl into
+// the fragment shader and builds the interleaved buffer from the attributes.
 //
-// colorGlsl has access to every declared attribute and uniform by name.
-// The hue2rgb() helper is always available in colorGlsl.
+// Built-in always available in colorGlsl (no need to declare in attributes):
+//   a_selected  float  1.0 = selected, 0.0 = not selected  (from selection VBO)
 //
-// Example (color by cluster):
-//   const enc: ColorEncoder<Cell> = {
-//       attributes: [{ name: "a_cluster", size: 1, feed: d => d.cluster }],
-//       uniforms:   [{ name: "u_n", type: "float", value: 14 }],
-//       colorGlsl:  `return vec4(hue2rgb(a_cluster / u_n), 0.8);`,
-//   };
+// hue2rgb(h: float) -> vec3 is also always in scope.
 // ---------------------------------------------------------------------------
 export interface ColorEncoder<T> {
-    // Extra per-point floats appended after x, y in the interleaved buffer.
-    // Each attribute is auto-declared in the vertex shader and passed as a
-    // varying to the fragment shader.
     attributes: {
-        name: string;
+        name: string;          // must follow "a_*" convention
         size: 1 | 2 | 3 | 4;
         feed: (d: T) => number | number[];
     }[];
-
-    // Scalar/vector uniforms uploaded once before drawing.
     uniforms: {
         name: string;
         type: "float" | "vec2" | "vec3" | "vec4";
         value: number | number[];
     }[];
-
-    // GLSL body of the color function — must contain a `return vec4(...)`.
-    // May reference any declared attribute or uniform by name.
-    // hue2rgb(h: float) -> vec3  is always available.
+    // Body of the color function. Must contain `return vec4(...)`.
+    // May reference any declared attribute by its a_* name or any uniform.
     colorGlsl: string;
-}
-
-interface UnderlyingCanvasParams<T> {
-    data: T[];
-
-    // Position accessors. The canvas auto-fits all points on init.
-    xAccessor: (d: T) => number;
-    yAccessor: (d: T) => number;
-
-    // Optional third dimension (e.g. t-SNE / UMAP z-axis).
-    // Projected away for 2D display — reserved for future 3D support.
-    zAccessor?: (d: T) => number;
-
-    // Drives all coloring logic. Swap at runtime to recolor without
-    // touching the canvas implementation (cluster → cell type → sample, etc.).
-    colorEncoder: ColorEncoder<T>;
-
-    // Controlled externally so sibling canvases stay in sync.
-    transform: Transform;
-
-    // Driven by a ResizeObserver in the consumer — triggers aspect ratio recompute.
-    size: { w: number; h: number };
 }
 
 export interface Transform { x: number; y: number; scale: number; }
 
-// Step 1: center + fit data → clip space  (u_scale encodes fit AND aspect ratio correction)
-// Step 2: apply user zoom / pan
-const VERT = `
+interface UnderlyingCanvasParams<T> {
+    data: T[];
+    xAccessor: (d: T) => number;
+    yAccessor: (d: T) => number;
+    zAccessor?: (d: T) => number; // reserved — projected away for 2D display
+    colorEncoder: ColorEncoder<T>;
+    transform: Transform;
+    size: { w: number; h: number }; // driven by consumer ResizeObserver
+    // Per-point float (1 = colored, 0 = greyed). null/undefined = all selected.
+    // Uploaded to a dedicated VBO — position/attribute data is never re-uploaded.
+    selectionMask?: Float32Array | null;
+}
+
+// ---------------------------------------------------------------------------
+// Shader builder — compiles colorEncoder into vertex + fragment shaders.
+// The vertex shader passes each ColorEncoder attribute as a varying so the
+// fragment shader can reference them by their original a_* names via aliases.
+// ---------------------------------------------------------------------------
+function glslType(size: 1 | 2 | 3 | 4) { return size === 1 ? "float" : `vec${size}`; }
+function varyingName(attrName: string)   { return "v" + attrName.slice(1); } // "a_cluster" → "v_cluster"
+
+function buildVertShader(enc: ColorEncoder<any>): string {
+    const attrDecls    = enc.attributes.map(a => `attribute ${glslType(a.size)} ${a.name};`).join("\n");
+    const varyingDecls = enc.attributes.map(a => `varying ${glslType(a.size)} ${varyingName(a.name)};`).join("\n");
+    const uniformDecls = enc.uniforms.map(u => `uniform ${u.type} ${u.name};`).join("\n");
+    const assigns      = enc.attributes.map(a => `    ${varyingName(a.name)} = ${a.name};`).join("\n");
+    return `
 attribute vec2 a_pos;
-attribute float a_cluster;
+${attrDecls}
+attribute float a_selected;
 uniform vec2 u_scale;
 uniform vec2 u_offset;
 uniform float u_userScale;
 uniform vec2 u_userTranslate;
-varying float v_cluster;
+${varyingDecls}
+varying float v_selected;
+${uniformDecls}
 void main() {
     vec2 clip = a_pos * u_scale + u_offset;
     clip = clip * u_userScale + u_userTranslate;
     gl_Position = vec4(clip, 0, 1);
     gl_PointSize = max(1.0, 2.0 * u_userScale);
-    v_cluster = a_cluster;
+${assigns}
+    v_selected = a_selected;
 }`;
+}
 
-const FRAG = `precision mediump float;
-varying float v_cluster;
-uniform float u_numClusters;
+function buildFragShader(enc: ColorEncoder<any>): string {
+    const varyingDecls = enc.attributes.map(a => `varying ${glslType(a.size)} ${varyingName(a.name)};`).join("\n");
+    const uniformDecls = enc.uniforms.map(u => `uniform ${u.type} ${u.name};`).join("\n");
+    // Declare a_* aliases so colorGlsl can use attribute names directly (not v_*)
+    const aliases = enc.attributes.map(a => `    ${glslType(a.size)} ${a.name} = ${varyingName(a.name)};`).join("\n");
+    return `precision mediump float;
+${varyingDecls}
+varying float v_selected;
+${uniformDecls}
 vec3 hue2rgb(float h) {
     vec4 k = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
     vec3 p = abs(fract(vec3(h) + k.xyz) * 6.0 - k.www);
     return clamp(p - k.xxx, 0.0, 1.0);
 }
-void main() {
-    gl_FragColor = vec4(hue2rgb(v_cluster / u_numClusters), 0.8);
-}`;
+vec4 _color() {
+${aliases}
+    float a_selected = v_selected;
+    ${enc.colorGlsl}
+}
+void main() { gl_FragColor = _color(); }`;
+}
 
-type GlState = {
-    gl: WebGLRenderingContext;
-    count: number;
-    scaleLoc: WebGLUniformLocation;
-    offsetLoc: WebGLUniformLocation;
-    userScaleLoc: WebGLUniformLocation;
-    userTranslateLoc: WebGLUniformLocation;
-    bounds: { minX: number; maxX: number; minY: number; maxY: number };
-};
+// ---------------------------------------------------------------------------
 
 function compileShader(gl: WebGLRenderingContext, type: number, src: string) {
     const s = gl.createShader(type)!;
@@ -117,65 +113,108 @@ function compileShader(gl: WebGLRenderingContext, type: number, src: string) {
     return s;
 }
 
-export function UnderlyingCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, transform, size }: UnderlyingCanvasParams<T>) {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const glRef = useRef<GlState | null>(null);
+type GlState = {
+    gl: WebGLRenderingContext;
+    count: number;
+    scaleLoc: WebGLUniformLocation;
+    offsetLoc: WebGLUniformLocation;
+    userScaleLoc: WebGLUniformLocation;
+    userTranslateLoc: WebGLUniformLocation;
+    selBuffer: WebGLBuffer; // dedicated VBO updated independently on selection change
+    bounds: { minX: number; maxX: number; minY: number; maxY: number };
+};
 
-    // Init once: compile shaders, upload buffer, compute data bounds.
-    // colorEncoder.attributes[0].feed used as cluster accessor until shader injection is implemented.
+export function UnderlyingCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, transform, size, selectionMask }: UnderlyingCanvasParams<T>) {
+    const canvasRef  = useRef<HTMLCanvasElement>(null);
+    const glRef      = useRef<GlState | null>(null);
+    // Ref so the init effect can read the current mask without it being a dependency.
+    const selMaskRef = useRef(selectionMask);
+    selMaskRef.current = selectionMask;
+
+    // Full re-init when colorEncoder changes: recompile shaders, rebuild buffer, setup attributes.
     useEffect(() => {
         const gl = canvasRef.current!.getContext("webgl")!;
         gl.clearColor(0, 0, 0, 1);
 
         const prog = gl.createProgram()!;
-        gl.attachShader(prog, compileShader(gl, gl.VERTEX_SHADER, VERT));
-        gl.attachShader(prog, compileShader(gl, gl.FRAGMENT_SHADER, FRAG));
+        gl.attachShader(prog, compileShader(gl, gl.VERTEX_SHADER,   buildVertShader(colorEncoder)));
+        gl.attachShader(prog, compileShader(gl, gl.FRAGMENT_SHADER, buildFragShader(colorEncoder)));
         gl.linkProgram(prog);
         gl.useProgram(prog);
 
-        const clusterFeed = colorEncoder.attributes[0].feed;
-        let numClusters = 0;
-        const raw: number[] = [];
-        for (const d of data) {
-            const c = clusterFeed(d) as number;
-            raw.push(xAccessor(d), yAccessor(d), c);
-            if (c > numClusters) numClusters = c;
+        // Build interleaved buffer: [x, y, attr…,  x, y, attr…, …]
+        const floatsPerPoint = 2 + colorEncoder.attributes.reduce((s, a) => s + a.size, 0);
+        const buffer = new Float32Array(data.length * floatsPerPoint);
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (let i = 0; i < data.length; i++) {
+            let off = i * floatsPerPoint;
+            const x = xAccessor(data[i]), y = yAccessor(data[i]);
+            buffer[off++] = x; buffer[off++] = y;
+            for (const attr of colorEncoder.attributes) {
+                const v = attr.feed(data[i]);
+                if (typeof v === "number") buffer[off++] = v;
+                else for (const n of v as number[]) buffer[off++] = n;
+            }
+            if (x < minX) minX = x; if (x > maxX) maxX = x;
+            if (y < minY) minY = y; if (y > maxY) maxY = y;
         }
-        const buffer = new Float32Array(raw);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+        // Main VBO (STATIC — never updated after upload)
+        const mainBuf = gl.createBuffer()!;
+        gl.bindBuffer(gl.ARRAY_BUFFER, mainBuf);
         gl.bufferData(gl.ARRAY_BUFFER, buffer, gl.STATIC_DRAW);
 
-        const stride = 12; // 3 floats × 4 bytes
+        const stride = floatsPerPoint * 4;
         const posLoc = gl.getAttribLocation(prog, "a_pos");
         gl.enableVertexAttribArray(posLoc);
         gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, stride, 0);
-
-        const clusterLoc = gl.getAttribLocation(prog, "a_cluster");
-        gl.enableVertexAttribArray(clusterLoc);
-        gl.vertexAttribPointer(clusterLoc, 1, gl.FLOAT, false, stride, 8);
-
-        gl.uniform1f(gl.getUniformLocation(prog, "u_numClusters")!, numClusters + 1);
-
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        for (let i = 0; i < buffer.length; i += 3) {
-            if (buffer[i]     < minX) minX = buffer[i];
-            if (buffer[i]     > maxX) maxX = buffer[i];
-            if (buffer[i + 1] < minY) minY = buffer[i + 1];
-            if (buffer[i + 1] > maxY) maxY = buffer[i + 1];
+        let attrByteOffset = 8;
+        for (const attr of colorEncoder.attributes) {
+            const loc = gl.getAttribLocation(prog, attr.name);
+            gl.enableVertexAttribArray(loc);
+            gl.vertexAttribPointer(loc, attr.size, gl.FLOAT, false, stride, attrByteOffset);
+            attrByteOffset += attr.size * 4;
         }
 
+        // Upload encoder uniforms
+        for (const u of colorEncoder.uniforms) {
+            const loc = gl.getUniformLocation(prog, u.name)!;
+            if (typeof u.value === "number") gl.uniform1f(loc, u.value);
+            else if (u.type === "vec2") gl.uniform2fv(loc, u.value as number[]);
+            else if (u.type === "vec3") gl.uniform3fv(loc, u.value as number[]);
+            else                        gl.uniform4fv(loc, u.value as number[]);
+        }
+
+        // Selection VBO (DYNAMIC — updated independently; a_selected always available in colorGlsl)
+        const selBuffer = gl.createBuffer()!;
+        gl.bindBuffer(gl.ARRAY_BUFFER, selBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, selMaskRef.current ?? new Float32Array(data.length).fill(1), gl.DYNAMIC_DRAW);
+        const selLoc = gl.getAttribLocation(prog, "a_selected");
+        gl.enableVertexAttribArray(selLoc);
+        gl.vertexAttribPointer(selLoc, 1, gl.FLOAT, false, 0, 0);
+
         glRef.current = {
-            gl, count: buffer.length / 3,
+            gl, count: data.length,
             scaleLoc:         gl.getUniformLocation(prog, "u_scale")!,
             offsetLoc:        gl.getUniformLocation(prog, "u_offset")!,
             userScaleLoc:     gl.getUniformLocation(prog, "u_userScale")!,
             userTranslateLoc: gl.getUniformLocation(prog, "u_userTranslate")!,
+            selBuffer,
             bounds: { minX, maxX, minY, maxY },
         };
-    }, []);
+    }, [colorEncoder]);
 
-    // Recompute aspect-correct fit + redraw on size or transform change.
+    // Upload selection mask to dedicated VBO only — main buffer untouched.
+    // Declared before the draw effect so it always runs first in the same cycle.
+    useEffect(() => {
+        const state = glRef.current;
+        if (!state) return;
+        const { gl, selBuffer, count } = state;
+        gl.bindBuffer(gl.ARRAY_BUFFER, selBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, selectionMask ?? new Float32Array(count).fill(1), gl.DYNAMIC_DRAW);
+    }, [selectionMask]);
+
+    // Redraw whenever size, transform, selection, or encoder changes.
     useEffect(() => {
         const state = glRef.current;
         if (!state || size.w === 0 || size.h === 0) return;
@@ -183,33 +222,24 @@ export function UnderlyingCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, 
         const { minX, maxX, minY, maxY } = bounds;
         const canvas = canvasRef.current!;
 
-        // Only reset the drawing buffer when dimensions actually change.
         if (canvas.width !== size.w || canvas.height !== size.h) {
             canvas.width  = size.w;
             canvas.height = size.h;
             gl.viewport(0, 0, size.w, size.h);
         }
 
-        // "Contain" fit: pick the axis that hits its limit first, so data never clips.
         const dataW = maxX - minX, dataH = maxY - minY;
-        const s = (dataW / dataH > size.w / size.h) ? size.w / dataW : size.h / dataH;
-        // ×2 converts pixel scale → clip range [-1, 1]. X and Y get separate factors
-        // so the aspect ratio difference between data and canvas is absorbed here.
+        const s  = (dataW / dataH > size.w / size.h) ? size.w / dataW : size.h / dataH;
         const sx = s * 2 / size.w, sy = s * 2 / size.h;
         gl.uniform2f(scaleLoc,  sx, sy);
         gl.uniform2f(offsetLoc, -(minX + dataW / 2) * sx, -(minY + dataH / 2) * sy);
 
-        // Pan is stored in screen pixels; converted to clip space here.
-        // Y negated: screen Y increases downward, clip Y upward.
         gl.uniform1f(userScaleLoc, transform.scale);
-        gl.uniform2f(userTranslateLoc,
-             2 * transform.x / size.w,
-            -2 * transform.y / size.h,
-        );
+        gl.uniform2f(userTranslateLoc, 2 * transform.x / size.w, -2 * transform.y / size.h);
 
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.drawArrays(gl.POINTS, 0, count);
-    }, [size, transform]);
+    }, [size, transform, selectionMask, colorEncoder]);
 
     return <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />;
 }

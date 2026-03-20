@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import sample_data_csv from "./brush-2d/sample_data_csv";
-import { ShaderInjection, Transform, UnderlyingCanvas } from "./underlying-canvas";
-import { OverlyingCanvas } from "./overlying-canvas";
+import { ColorEncoder, ShaderInjection, Transform, UnderlyingCanvas } from "./underlying-canvas";
+import { CanvasMode, OverlyingCanvas } from "./overlying-canvas";
 
 interface _Cell {
     id: string;
@@ -21,29 +21,36 @@ abstract class AbstractViewerController<T> {
     abstract uploadUniforms(gl: WebGLRenderingContext, prog: WebGLProgram, data: T[]): void;
 }
 
-interface ColorEncoder {
-    // Extra per-point floats this encoder needs (appended after x,y in buffer)
-    attributes: { name: string; size: 1 | 2 | 3 | 4; feed: (d: any) => number | number[] }[];
-    // Uniforms this encoder needs uploaded
-    uniforms: { name: string; type: "float" | "vec2" | "vec3" | "vec4" }[];
-    // GLSL function body: given the declared attributes/uniforms, return vec4
-    // Only this expression is injected — declarations are auto-generated
-    colorGlsl: string;
-}
+// Encoders are defined inside the component (see useMemo below) so numClusters
+// can be included as a uniform value once parsed from the data.
 
-const byColorEncoder: ColorEncoder = {
-    attributes: [{ name: "a_cluster", size: 1, feed: d => d.cluster }],
-    uniforms:   [{ name: "u_numClusters", type: "float" }],
-    colorGlsl:  `return vec4(hue2rgb(a_cluster / u_numClusters), 0.8);`,
+// Screen pixel → data coordinate. Mirrors the vertex shader transform so
+// selection rectangles can be mapped back into data space for the O(N) test.
+type Bounds = { minX: number; maxX: number; minY: number; maxY: number };
+function screenToData(px: number, py: number, b: Bounds, size: { w: number; h: number }, t: Transform) {
+    const dataW = b.maxX - b.minX, dataH = b.maxY - b.minY;
+    const s  = (dataW / dataH > size.w / size.h) ? size.w / dataW : size.h / dataH;
+    const sx = s * 2 / size.w, sy = s * 2 / size.h;
+    const cfx = 2 * px / size.w - 1;
+    const cfy = 1 - 2 * py / size.h;
+    const cx  = (cfx - 2 * t.x / size.w) / t.scale;
+    const cy  = (cfy + 2 * t.y / size.h) / t.scale;
+    return { x: cx / sx + b.minX + dataW / 2, y: cy / sy + b.minY + dataH / 2 };
 }
 
 
 const INIT_TRANSFORM: Transform = { x: 0, y: 0, scale: 1 };
 
-export default function Viewer2d(params: Viewer2dParams) {
+export default function Viewer2d(_params: Viewer2dParams) {
     const containerRef = useRef<HTMLDivElement>(null);
-    const [size, setSize]           = useState({ w: 0, h: 0 });
-    const [transform, setTransform] = useState<Transform>(INIT_TRANSFORM);
+    const [size, setSize]                   = useState({ w: 0, h: 0 });
+    const [transform, setTransform]         = useState<Transform>(INIT_TRANSFORM);
+    const [mode, setMode]                   = useState<CanvasMode>("pan");
+    const [selectionMask, setSelectionMask] = useState<Float32Array | null>(null);
+
+    // Refs so onSelect always sees current size/transform without being in its deps.
+    const sizeRef = useRef(size); sizeRef.current = size;
+    const transformRef = useRef(transform); transformRef.current = transform;
 
     useEffect(() => {
         const ro = new ResizeObserver(([entry]) => {
@@ -54,11 +61,49 @@ export default function Viewer2d(params: Viewer2dParams) {
         return () => ro.disconnect();
     }, []);
 
-    const data: _Cell[] = useMemo(() =>
-        sample_data_csv.split("\n").slice(1).filter(Boolean).map(line => {
+    const { data, bounds, numClusters } = useMemo(() => {
+        const data: _Cell[] = sample_data_csv.split("\n").slice(1).filter(Boolean).map(line => {
             const [id, x, y, cluster] = line.split(",");
             return { id, x: parseFloat(x), y: parseFloat(y), cluster: parseInt(cluster) };
-        }), []);
+        });
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, n = 0;
+        for (const d of data) {
+            if (d.x < minX) minX = d.x; if (d.x > maxX) maxX = d.x;
+            if (d.y < minY) minY = d.y; if (d.y > maxY) maxY = d.y;
+            if (d.cluster > n) n = d.cluster;
+        }
+        return { data, bounds: { minX, maxX, minY, maxY }, numClusters: n + 1 };
+    }, []);
+
+    // byClusterEncoder — all cells colored by cluster hue. Ignores a_selected.
+    const byClusterEncoder = useMemo((): ColorEncoder<_Cell> => ({
+        attributes: [{ name: "a_cluster", size: 1, feed: d => d.cluster }],
+        uniforms:   [{ name: "u_numClusters", type: "float", value: numClusters }],
+        colorGlsl:  `return vec4(hue2rgb(a_cluster / u_numClusters), 0.9);`,
+    }), [numClusters]);
+
+    // bySelectedEncoder — selected cells keep cluster hue, non-selected are greyed.
+    // a_selected is a built-in varying provided by the selection VBO (always available).
+    const bySelectedEncoder = useMemo((): ColorEncoder<_Cell> => ({
+        attributes: [{ name: "a_cluster", size: 1, feed: d => d.cluster }],
+        uniforms:   [{ name: "u_numClusters", type: "float", value: numClusters }],
+        colorGlsl: `
+            if (a_selected < 0.5) return vec4(0.35, 0.35, 0.35, 0.35);
+            return vec4(hue2rgb(a_cluster / u_numClusters), 0.9);
+        `,
+    }), [numClusters]);
+
+    // O(N) membership test: convert screen rect → data coords, scan data array.
+    const onSelect = useCallback((rect: { x1: number; y1: number; x2: number; y2: number }) => {
+        const p1 = screenToData(rect.x1, rect.y1, bounds, sizeRef.current, transformRef.current);
+        const p2 = screenToData(rect.x2, rect.y2, bounds, sizeRef.current, transformRef.current);
+        const xMin = Math.min(p1.x, p2.x), xMax = Math.max(p1.x, p2.x);
+        const yMin = Math.min(p1.y, p2.y), yMax = Math.max(p1.y, p2.y);
+        const mask = new Float32Array(data.length);
+        for (let i = 0; i < data.length; i++)
+            mask[i] = data[i].x >= xMin && data[i].x <= xMax && data[i].y >= yMin && data[i].y <= yMax ? 1 : 0;
+        setSelectionMask(mask);
+    }, [bounds, data]);
 
     return (
         <div ref={containerRef} style={{ position: "relative", width: "100%", height: "100vh" }}>
@@ -66,11 +111,26 @@ export default function Viewer2d(params: Viewer2dParams) {
                 data={data}
                 xAccessor={d => d.x}
                 yAccessor={d => d.y}
-                colorEncoder={byColorEncoder as any}
+                colorEncoder={selectionMask ? bySelectedEncoder : byClusterEncoder}
                 transform={transform}
                 size={size}
+                selectionMask={selectionMask}
             />
-            <OverlyingCanvas size={size} transform={transform} onTransform={setTransform} />
+            <OverlyingCanvas
+                size={size}
+                mode={mode}
+                transform={transform}
+                onTransform={setTransform}
+                onSelect={onSelect}
+            />
+            <div style={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 8 }}>
+                <button onClick={() => setMode(m => m === "pan" ? "select" : "pan")}>
+                    {mode === "pan" ? "Select mode" : "Pan mode"}
+                </button>
+                {selectionMask && (
+                    <button onClick={() => setSelectionMask(null)}>Clear selection</button>
+                )}
+            </div>
         </div>
     );
 }
