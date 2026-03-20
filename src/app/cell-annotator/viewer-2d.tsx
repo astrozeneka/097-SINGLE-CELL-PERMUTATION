@@ -1,15 +1,10 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import sample_data_csv from "./brush-2d/sample_data_csv";
+import CsvUploadDialog, { ParsedCsvData } from "./csv-upload-dialog";
 import { ColorEncoder, ShaderInjection, Transform, UnderlyingCanvas } from "./underlying-canvas";
 import { CanvasMode, OverlyingCanvas } from "./overlying-canvas";
 
-interface _Cell {
-    id: string;
-    x: number;
-    y: number;
-    cluster: number;
-}
+type _Cell = ParsedCsvData["data"][number];
 
 interface Viewer2dParams {
 }
@@ -57,6 +52,7 @@ export default function Viewer2d(_params: Viewer2dParams) {
     const [transform, setTransform]         = useState<Transform>(INIT_TRANSFORM);
     const [mode, setMode]                   = useState<CanvasMode>("pan");
     const [selectionMask, setSelectionMask] = useState<Float32Array | null>(null);
+    const [parsedData, setParsedData]       = useState<ParsedCsvData | null>(null);
 
     // Refs so callbacks always see current values without being in their deps.
     const sizeRef = useRef(size); sizeRef.current = size;
@@ -86,13 +82,8 @@ export default function Viewer2d(_params: Viewer2dParams) {
     }, []);
 
     const { data, dataLines, csvHeader, bounds, numClusters } = useMemo(() => {
-        const allLines  = sample_data_csv.split("\n");
-        const csvHeader = allLines[0];
-        const dataLines = allLines.slice(1).filter(Boolean);
-        const data: _Cell[] = dataLines.map(line => {
-            const [id, x, y, cluster] = line.split(",");
-            return { id, x: parseFloat(x), y: parseFloat(y), cluster: parseInt(cluster) };
-        });
+        if (!parsedData) return { data: [] as _Cell[], dataLines: [] as string[], csvHeader: "", bounds: { minX: 0, maxX: 1, minY: 0, maxY: 1 }, numClusters: 1 };
+        const { data, dataLines, csvHeader } = parsedData;
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, n = 0;
         for (const d of data) {
             if (d.x < minX) minX = d.x; if (d.x > maxX) maxX = d.x;
@@ -100,7 +91,7 @@ export default function Viewer2d(_params: Viewer2dParams) {
             if (d.cluster > n) n = d.cluster;
         }
         return { data, dataLines, csvHeader, bounds: { minX, maxX, minY, maxY }, numClusters: n + 1 };
-    }, []);
+    }, [parsedData]);
 
     // byClusterEncoder — all cells colored by cluster hue. Ignores a_selected.
     const byClusterEncoder = useMemo((): ColorEncoder<_Cell> => ({
@@ -145,18 +136,26 @@ export default function Viewer2d(_params: Viewer2dParams) {
     }, [bounds, data]);
 
     const exportCsv = useCallback(() => {
-        const mask = selectionMaskRef.current;
-        const csv  = csvHeader + ",selection_mask\n" + dataLines.map((line, i) => `${line},${mask ? mask[i] : 0}`).join("\n");
-        const url  = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-        const a    = Object.assign(document.createElement("a"), { href: url, download: "cells_annotated.csv" });
+        const mask     = selectionMaskRef.current;
+        const baseName = parsedData?.fileName.replace(/\.csv$/i, "") ?? "cells";
+        const csv      = csvHeader + ",selection_mask\n" + dataLines.map((line, i) => `${line},${mask ? mask[i] : 0}`).join("\n");
+        const url      = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+        const a        = Object.assign(document.createElement("a"), { href: url, download: `${baseName}_annotated.csv` });
         a.click();
         URL.revokeObjectURL(url);
-    }, [csvHeader, dataLines]);
+    }, [csvHeader, dataLines, parsedData]);
 
     const selectedCount = selectionMask ? selectionMask.reduce((n, v) => n + v, 0) : 0;
 
+    const handleLoad = useCallback((parsed: ParsedCsvData) => {
+        setParsedData(parsed);
+        setSelectionMask(parsed.initialMask);
+        setTransform(INIT_TRANSFORM);
+    }, []);
+
     return (
         <div ref={containerRef} style={{ position: "relative", width: "100%", height: "100vh" }}>
+            {!parsedData && <CsvUploadDialog onLoad={handleLoad} />}
             <UnderlyingCanvas
                 data={data}
                 xAccessor={d => d.x}
