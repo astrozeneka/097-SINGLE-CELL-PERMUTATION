@@ -58,9 +58,10 @@ export default function Viewer2d(_params: Viewer2dParams) {
     const [mode, setMode]                   = useState<CanvasMode>("pan");
     const [selectionMask, setSelectionMask] = useState<Float32Array | null>(null);
 
-    // Refs so onSelect always sees current size/transform without being in its deps.
+    // Refs so callbacks always see current values without being in their deps.
     const sizeRef = useRef(size); sizeRef.current = size;
     const transformRef = useRef(transform); transformRef.current = transform;
+    const selectionMaskRef = useRef(selectionMask); selectionMaskRef.current = selectionMask;
 
     useEffect(() => {
         const ro = new ResizeObserver(([entry]) => {
@@ -71,8 +72,24 @@ export default function Viewer2d(_params: Viewer2dParams) {
         return () => ro.disconnect();
     }, []);
 
-    const { data, bounds, numClusters } = useMemo(() => {
-        const data: _Cell[] = sample_data_csv.split("\n").slice(1).filter(Boolean).map(line => {
+    // Keyboard shortcuts: 1=pan, 2=rect select, 3=polygon, Escape=pan.
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+            if (e.key === "1") setMode("pan");
+            else if (e.key === "2") setMode("select");
+            else if (e.key === "3") setMode("polygon");
+            else if (e.key === "Escape") setMode("pan");
+        };
+        window.addEventListener("keydown", handler);
+        return () => window.removeEventListener("keydown", handler);
+    }, []);
+
+    const { data, dataLines, csvHeader, bounds, numClusters } = useMemo(() => {
+        const allLines  = sample_data_csv.split("\n");
+        const csvHeader = allLines[0];
+        const dataLines = allLines.slice(1).filter(Boolean);
+        const data: _Cell[] = dataLines.map(line => {
             const [id, x, y, cluster] = line.split(",");
             return { id, x: parseFloat(x), y: parseFloat(y), cluster: parseInt(cluster) };
         });
@@ -82,7 +99,7 @@ export default function Viewer2d(_params: Viewer2dParams) {
             if (d.y < minY) minY = d.y; if (d.y > maxY) maxY = d.y;
             if (d.cluster > n) n = d.cluster;
         }
-        return { data, bounds: { minX, maxX, minY, maxY }, numClusters: n + 1 };
+        return { data, dataLines, csvHeader, bounds: { minX, maxX, minY, maxY }, numClusters: n + 1 };
     }, []);
 
     // byClusterEncoder — all cells colored by cluster hue. Ignores a_selected.
@@ -116,13 +133,27 @@ export default function Viewer2d(_params: Viewer2dParams) {
     }, [bounds, data]);
 
     // O(N) membership test: convert screen polygon → data coords, ray-cast each cell.
-    const onSelectPolygon = useCallback((screenPoints: { x: number; y: number }[]) => {
+    const onSelectPolygon = useCallback((screenPoints: { x: number; y: number }[], additive: boolean) => {
         const poly = screenPoints.map(p => screenToData(p.x, p.y, bounds, sizeRef.current, transformRef.current));
         const mask = new Float32Array(data.length);
         for (let i = 0; i < data.length; i++)
             mask[i] = pointInPolygon(data[i].x, data[i].y, poly) ? 1 : 0;
+        if (additive && selectionMaskRef.current)
+            for (let i = 0; i < mask.length; i++)
+                if (selectionMaskRef.current[i]) mask[i] = 1;
         setSelectionMask(mask);
     }, [bounds, data]);
+
+    const exportCsv = useCallback(() => {
+        const mask = selectionMaskRef.current;
+        const csv  = csvHeader + ",selection_mask\n" + dataLines.map((line, i) => `${line},${mask ? mask[i] : 0}`).join("\n");
+        const url  = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+        const a    = Object.assign(document.createElement("a"), { href: url, download: "cells_annotated.csv" });
+        a.click();
+        URL.revokeObjectURL(url);
+    }, [csvHeader, dataLines]);
+
+    const selectedCount = selectionMask ? selectionMask.reduce((n, v) => n + v, 0) : 0;
 
     return (
         <div ref={containerRef} style={{ position: "relative", width: "100%", height: "100vh" }}>
@@ -143,13 +174,21 @@ export default function Viewer2d(_params: Viewer2dParams) {
                 onSelect={onSelect}
                 onSelectPolygon={onSelectPolygon}
             />
-            <div style={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 8 }}>
-                <button onClick={() => setMode(m => m === "pan" ? "select" : m === "select" ? "polygon" : "pan")}>
-                    {mode === "pan" ? "Select mode" : mode === "select" ? "Polygon mode" : "Pan mode"}
-                </button>
+            <div style={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 6, alignItems: "center", color: "white", fontFamily: "sans-serif", fontSize: 14 }}>
+                {(["pan", "select", "polygon"] as CanvasMode[]).map((m, i) => (
+                    <button key={m} onClick={() => setMode(m)}
+                        style={{ opacity: mode === m ? 1 : 0.5, fontWeight: mode === m ? "bold" : "normal" }}>
+                        {m === "pan" ? "Pan" : m === "select" ? "Rect" : "Polygon"} [{i + 1}]
+                    </button>
+                ))}
+                <span style={{ color: "rgba(255,255,255,0.4)", margin: "0 4px" }}>|</span>
                 {selectionMask && (
-                    <button onClick={() => setSelectionMask(null)}>Clear selection</button>
+                    <span style={{ color: "white", fontSize: 12 }}>{selectedCount | 0} selected</span>
                 )}
+                {selectionMask && (
+                    <button onClick={() => setSelectionMask(null)}>Clear</button>
+                )}
+                <button onClick={exportCsv}>Export CSV</button>
             </div>
         </div>
     );

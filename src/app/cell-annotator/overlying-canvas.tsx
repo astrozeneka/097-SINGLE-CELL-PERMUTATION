@@ -12,14 +12,38 @@ interface OverlyingCanvasParams {
     // Rect corners in canvas pixel coordinates (origin = canvas top-left).
     onSelect: (rect: { x1: number; y1: number; x2: number; y2: number }) => void;
     // Polygon vertices in canvas pixel coordinates. Called live during draw and on finalize.
-    onSelectPolygon: (points: { x: number; y: number }[]) => void;
+    // additive=true (Ctrl held) ORs with the existing mask instead of replacing it.
+    onSelectPolygon: (points: { x: number; y: number }[], additive: boolean) => void;
+}
+
+// Store polygon vertices in base-clip space (normalized coords before transform) so they
+// stay anchored to the correct data position even when the user scrolls during drawing.
+function toBaseClip(px: number, py: number, s: { w: number; h: number }, t: Transform) {
+    return {
+        bx: (2 * px / s.w - 1 - 2 * t.x / s.w) / t.scale,
+        by: (1 - 2 * py / s.h + 2 * t.y / s.h) / t.scale,
+    };
+}
+function fromBaseClip(bx: number, by: number, s: { w: number; h: number }, t: Transform) {
+    const cfx = bx * t.scale + 2 * t.x / s.w;
+    const cfy = by * t.scale - 2 * t.y / s.h;
+    return { x: (cfx + 1) * s.w / 2, y: (1 - cfy) * s.h / 2 };
 }
 
 export function OverlyingCanvas({ size, mode, transform, onTransform, onSelect, onSelectPolygon }: OverlyingCanvasParams) {
-    const ref        = useRef<HTMLCanvasElement>(null);
-    const drag       = useRef<{ startX: number; startY: number; tx: number; ty: number } | null>(null);
-    const rectStart  = useRef<{ x: number; y: number } | null>(null);
-    const polyPoints = useRef<{ x: number; y: number }[]>([]);
+    const ref          = useRef<HTMLCanvasElement>(null);
+    const drag         = useRef<{ startX: number; startY: number; tx: number; ty: number } | null>(null);
+    const rectStart    = useRef<{ x: number; y: number } | null>(null);
+    const polyPoints   = useRef<{ bx: number; by: number }[]>([]);
+    const lastMousePos = useRef<{ x: number; y: number } | null>(null);
+
+    // Redraw polygon preview when transform changes (e.g. scroll while drawing).
+    useEffect(() => {
+        if (mode !== "polygon" || polyPoints.current.length === 0) return;
+        const mouse = lastMousePos.current;
+        const screenPts = polyPoints.current.map(p => fromBaseClip(p.bx, p.by, size, transform));
+        if (mouse) drawPolygonPreview(screenPts, mouse.x, mouse.y);
+    }, [transform, size]);
 
     // Reset mode-specific state and clear overlay when switching modes.
     useEffect(() => {
@@ -84,10 +108,12 @@ export function OverlyingCanvas({ size, mode, transform, onTransform, onSelect, 
                     drawPreview(rectStart.current.x, rectStart.current.y, x, y);
                 } else if (mode === "polygon" && polyPoints.current.length > 0) {
                     const { x, y } = canvasPos(e);
-                    drawPolygonPreview(polyPoints.current, x, y);
+                    lastMousePos.current = { x, y };
+                    const screenPts = polyPoints.current.map(p => fromBaseClip(p.bx, p.by, size, transform));
+                    drawPolygonPreview(screenPts, x, y);
                     // Live buffer update: need at least 2 placed points so cursor forms a triangle.
                     if (polyPoints.current.length >= 2)
-                        onSelectPolygon([...polyPoints.current, { x, y }]);
+                        onSelectPolygon([...screenPts, { x, y }], e.ctrlKey);
                 }
             }}
             onMouseUp={()   => { drag.current = null; }}
@@ -104,7 +130,7 @@ export function OverlyingCanvas({ size, mode, transform, onTransform, onSelect, 
                     }
                 } else if (mode === "polygon") {
                     const { x, y } = canvasPos(e);
-                    polyPoints.current = [...polyPoints.current, { x, y }];
+                    polyPoints.current = [...polyPoints.current, toBaseClip(x, y, size, transform)];
                 }
             }}
             onDoubleClick={e => {
@@ -113,7 +139,7 @@ export function OverlyingCanvas({ size, mode, transform, onTransform, onSelect, 
                 const pts = polyPoints.current.slice(0, -1);
                 polyPoints.current = [];
                 ref.current!.getContext("2d")!.clearRect(0, 0, size.w, size.h);
-                if (pts.length >= 3) onSelectPolygon(pts);
+                if (pts.length >= 3) onSelectPolygon(pts.map(p => fromBaseClip(p.bx, p.by, size, transform)), e.ctrlKey);
             }}
         />
     );
