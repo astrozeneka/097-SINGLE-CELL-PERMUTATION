@@ -1,7 +1,8 @@
 "use client";
 import { useEffect } from "react";
 import sample_data_csv from "./brush-2d/sample_data_csv";
-import { ShaderInjection } from "./underlying-canvas";
+import { ShaderInjection, UnderlyingCanvas } from "./underlying-canvas";
+import { OverlyingCanvas } from "./overlying-canvas";
 
 interface _Cell {
     id: string;
@@ -54,7 +55,8 @@ export default function Viewer2d(params: Viewer2dParams) {
 
     return (
         <div>
-            Viewer 2d
+            <OverlyingCanvas></OverlyingCanvas>
+            <UnderlyingCanvas></UnderlyingCanvas>
         </div>
     );
 }

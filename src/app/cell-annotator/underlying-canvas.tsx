@@ -39,14 +39,6 @@ export interface ColorEncoder<T> {
     colorGlsl: string;
 }
 
-// Zoom/pan state. Managed externally so an overlay canvas (e.g. drawing layer)
-// can share the exact same transform without coupling to this component.
-export interface Transform {
-    x: number;
-    y: number;
-    scale: number;
-}
-
 interface UnderlyingCanvasParams<T> {
     data: T[];
 
@@ -67,5 +59,7 @@ interface UnderlyingCanvasParams<T> {
 }
 
 export function UnderlyingCanvas<T>(params: UnderlyingCanvasParams<T>) {
-
+    return (
+        <canvas></canvas>
+    )
 }
