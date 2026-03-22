@@ -30,7 +30,7 @@ function loadData(file: string): { data: number[]; numClusters: number; dataBoun
     return { data, numClusters: clusters.size, dataBounds: { minX, maxX, minY, maxY } };
 }
 
-function loadPolygons(sampleName: string) {
+function loadPolygons(sampleName: string, maxX: number) {
     const dir = path.join(process.cwd(), "public/sample-datas/spatial-cosmx/geojson", sampleName);
     if (!fs.existsSync(dir)) return [];
     return fs.readdirSync(dir)
@@ -38,7 +38,7 @@ function loadPolygons(sampleName: string) {
         .map(f => {
             const { geometry } = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8"));
             const ring: number[][] = geometry.coordinates[0];
-            return { name: f.slice(0, -8), points: ring.slice(0, -1).map(([x, y]) => ({ x, y })) };
+            return { name: f.slice(0, -8), points: ring.slice(0, -1).map(([x, y]) => ({ x: maxX - x, y })) };
         });
 }
 
@@ -46,6 +46,6 @@ export default async function SampleCutterPage({ searchParams }: { searchParams:
     const { sample } = await searchParams;
     const sampleName = sample === "LARC_A" ? "LARC_A" : "LARC_B";
     const { data, numClusters, dataBounds } = loadData(`${sampleName}.csv`);
-    const savedPolygons = loadPolygons(sampleName);
+    const savedPolygons = loadPolygons(sampleName, dataBounds.maxX);
     return <SampleCutterClient data={data} numClusters={numClusters} savedPolygons={savedPolygons} dataBounds={dataBounds} />;
 }
