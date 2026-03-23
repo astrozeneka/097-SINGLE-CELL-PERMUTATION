@@ -1,15 +1,20 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
+
+export interface PolygonManagerHandle {
+    addBrushAt: (x: number, y: number) => void;
+}
 
 interface PolygonManagerCanvasProps {
     size: { w: number; h: number };
     transform: any;
     onTransform: (transform: any) => void;
+    handleRef?: React.MutableRefObject<PolygonManagerHandle | null>;
 }
 
 const BRUSH_RADIUS = 100;
 const BRUSH_VERTS = 16;
 
-export default function PolygonManagerCanvas({ size, transform, onTransform }: PolygonManagerCanvasProps) {
+export default function PolygonManagerCanvas({ size, handleRef }: PolygonManagerCanvasProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const polygons = useRef<{ id: number; verts: { x: number; y: number }[] }[]>([]);
     const nextId = useRef(1);
@@ -38,10 +43,7 @@ export default function PolygonManagerCanvas({ size, transform, onTransform }: P
         console.log("==", polygons.current)
     }
 
-    function handleClick(e: React.MouseEvent<HTMLCanvasElement>) {
-        const rect = canvasRef.current!.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+    function addBrushAt(x: number, y: number) {
         const verts = Array.from({ length: BRUSH_VERTS }, (_, i) => {
             const angle = (2 * Math.PI * i) / BRUSH_VERTS;
             return { x: x + BRUSH_RADIUS * Math.cos(angle), y: y + BRUSH_RADIUS * Math.sin(angle) };
@@ -51,7 +53,12 @@ export default function PolygonManagerCanvas({ size, transform, onTransform }: P
         console.log("Added polygon at", { x, y }, "with verts", verts);
     }
 
+    useEffect(() => {
+        if (handleRef) handleRef.current = { addBrushAt };
+        return () => { if (handleRef) handleRef.current = null; };
+    });
+
     return (
-        <canvas ref={canvasRef} width={size.w} height={size.h} onClick={handleClick} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }} />
+        <canvas ref={canvasRef} width={size.w} height={size.h} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }} />
     )
 }
