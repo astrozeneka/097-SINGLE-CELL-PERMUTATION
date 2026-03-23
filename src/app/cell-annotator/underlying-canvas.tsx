@@ -33,7 +33,7 @@ export interface ColorEncoder<T> {
     colorGlsl: string;
 }
 
-export interface Transform { x: number; y: number; scale: number; }
+export interface Transform { x: number; y: number; scale: number; invertX?: boolean; invertY?: boolean; }
 
 interface UnderlyingCanvasParams<T> {
     data: T[];
@@ -231,8 +231,10 @@ export function UnderlyingCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, 
         const dataW = maxX - minX, dataH = maxY - minY;
         const s  = (dataW / dataH > size.w / size.h) ? size.w / dataW : size.h / dataH;
         const sx = s * 2 / size.w, sy = s * 2 / size.h;
-        gl.uniform2f(scaleLoc,  sx, sy);
-        gl.uniform2f(offsetLoc, -(minX + dataW / 2) * sx, -(minY + dataH / 2) * sy);
+        const flipX = transform.invertX ? -1 : 1;
+        const flipY = transform.invertY ? -1 : 1;
+        gl.uniform2f(scaleLoc,  flipX * sx, flipY * sy);
+        gl.uniform2f(offsetLoc, -flipX * (minX + dataW / 2) * sx, -flipY * (minY + dataH / 2) * sy);
 
         gl.uniform1f(userScaleLoc, transform.scale);
         gl.uniform2f(userTranslateLoc, 2 * transform.x / size.w, -2 * transform.y / size.h);

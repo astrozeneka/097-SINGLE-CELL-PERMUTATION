@@ -40,7 +40,7 @@ function screenToData(px: number, py: number, b: Bounds, size: { w: number; h: n
     const cfy = 1 - 2 * py / size.h;
     const cx  = (cfx - 2 * t.x / size.w) / t.scale;
     const cy  = (cfy + 2 * t.y / size.h) / t.scale;
-    return { x: cx / sx + b.minX + dataW / 2, y: cy / sy + b.minY + dataH / 2 };
+    return { x: (t.invertX ? -1 : 1) * cx / sx + b.minX + dataW / 2, y: (t.invertY ? -1 : 1) * cy / sy + b.minY + dataH / 2 };
 }
 
 
@@ -180,6 +180,15 @@ export default function Viewer2d(_params: Viewer2dParams) {
                         {m === "pan" ? "Pan" : m === "select" ? "Rect" : "Polygon"} [{i + 1}]
                     </button>
                 ))}
+                <span style={{ color: "rgba(255,255,255,0.4)", margin: "0 4px" }}>|</span>
+                <button onClick={() => setTransform(t => ({ ...t, invertX: !t.invertX }))}
+                    style={{ opacity: transform.invertX ? 1 : 0.5, fontWeight: transform.invertX ? "bold" : "normal" }}>
+                    Inv X
+                </button>
+                <button onClick={() => setTransform(t => ({ ...t, invertY: !t.invertY }))}
+                    style={{ opacity: transform.invertY ? 1 : 0.5, fontWeight: transform.invertY ? "bold" : "normal" }}>
+                    Inv Y
+                </button>
                 <span style={{ color: "rgba(255,255,255,0.4)", margin: "0 4px" }}>|</span>
                 {selectionMask && (
                     <span style={{ color: "white", fontSize: 12 }}>{selectedCount | 0} selected</span>

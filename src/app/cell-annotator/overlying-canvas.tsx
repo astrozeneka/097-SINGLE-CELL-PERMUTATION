@@ -99,7 +99,7 @@ export function OverlyingCanvas({ size, mode, transform, onTransform, onSelect, 
                 const dx = e.clientX - r.left - size.w / 2;
                 const dy = e.clientY - r.top  - size.h / 2;
                 const f  = e.deltaY < 0 ? 1.1 : 1 / 1.1;
-                onTransform({ scale: transform.scale * f, x: transform.x * f - dx * (f - 1), y: transform.y * f - dy * (f - 1) });
+                onTransform({ ...transform, scale: transform.scale * f, x: transform.x * f - dx * (f - 1), y: transform.y * f - dy * (f - 1) });
             }}
             onMouseDown={e => {
                 if (mode !== "pan") return;
