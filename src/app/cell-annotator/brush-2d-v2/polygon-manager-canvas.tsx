@@ -11,6 +11,10 @@ interface PolygonManagerCanvasProps {
     handleRef?: React.MutableRefObject<PolygonManagerHandle | null>;
 }
 
+export class Polygon {
+    constructor(public id: string) {}
+}
+
 const BRUSH_RADIUS = 100;
 const BRUSH_VERTS = 16;
 
