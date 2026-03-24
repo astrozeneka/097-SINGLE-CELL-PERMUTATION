@@ -84,8 +84,8 @@ export default function Viewer2d() {
     useEffect(() => {
         setLoading(true);
         loadPatientCsv(subset).then(data => { 
-            // console.log(`Loaded ${data.length} points for ${subset}`);
             setDataSubset(data); 
+            setSubset(subset);
             setLoading(false); 
         });
     }, [subset]);
@@ -96,6 +96,15 @@ export default function Viewer2d() {
         ro.observe(el);
         return () => ro.disconnect();
     }, []);
+
+    const onSelect = (patientId: string) => {
+        setLoading(true);
+        loadPatientCsv(patientId).then(data => {
+            setDataSubset(data);
+            setSubset(patientId);
+            setLoading(false);
+        });
+    }
 
     return (
         <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100vh" }}>
@@ -122,7 +131,7 @@ export default function Viewer2d() {
                     onTransform={setTransform}
                     onBrush={(x, y) => polygonManagerRef.current?.addBrushAt(x, y)}
                 />
-                <SubsetSelector patients={ALL_PATIENTS} selected={subset} onSelect={setSubset} />
+                <SubsetSelector patients={ALL_PATIENTS} selected={subset} onSelect={onSelect} />
             </div>
             <div style={{ flex: "0 0 300px", background: "#222", color: "#fff", padding: 16 }}>
                 <p style={{ fontFamily: "monospace", fontSize: 12 }}>{subset}</p>
