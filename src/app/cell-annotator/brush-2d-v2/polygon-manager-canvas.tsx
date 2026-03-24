@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import polygonClipping from "polygon-clipping";
 
 export interface PolygonManagerHandle {
     addBrushAt: (x: number, y: number) => void;
@@ -48,13 +49,30 @@ export default function PolygonManagerCanvas({ size, handleRef }: PolygonManager
     }
 
     function addBrushAt(x: number, y: number) {
-        const verts = Array.from({ length: BRUSH_VERTS }, (_, i) => {
+        const circle: [number, number][] = Array.from({ length: BRUSH_VERTS }, (_, i) => {
             const angle = (2 * Math.PI * i) / BRUSH_VERTS;
-            return { x: x + BRUSH_RADIUS * Math.cos(angle), y: y + BRUSH_RADIUS * Math.sin(angle) };
+            return [x + BRUSH_RADIUS * Math.cos(angle), y + BRUSH_RADIUS * Math.sin(angle)];
         });
-        polygons.current.push({ id: nextId.current++, verts });
+
+        if (polygons.current.length === 0) {
+            polygons.current.push({ id: nextId.current++, verts: circle.map(([px, py]) => ({ x: px, y: py })) });
+        } else {
+            const last = polygons.current[polygons.current.length - 1];
+            const lastRing: [number, number][] = last.verts.map(v => [v.x, v.y]);
+            const result = polygonClipping.union([lastRing], [circle]);
+            polygons.current.splice(polygons.current.length - 1, 1,
+                ...result.map((poly, i) => ({
+                    id: i === 0 ? last.id : nextId.current++,
+                    verts: poly[0].map(([px, py]) => ({ x: px, y: py }))
+                }))
+            );
+        }
         redraw();
-        console.log("Added polygon at", { x, y }, "with verts", verts);
+        console.log("Added polygon at", { x, y });
+    }
+
+    function moveBrushTo(x: number, y: number) {
+
     }
 
     useEffect(() => {

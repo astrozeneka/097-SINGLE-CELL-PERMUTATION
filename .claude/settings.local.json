@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:pypi.org)"
+      "WebFetch(domain:pypi.org)",
+      "Bash(npm info:*)"
     ],
     "additionalDirectories": [
       "D:\\Ryan\\187-SARCOMA-DATA-PREPARATION\\ratios_data_39p701uqfl3mmuex2r6",
