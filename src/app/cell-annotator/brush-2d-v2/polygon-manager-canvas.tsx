@@ -109,6 +109,7 @@ export default function PolygonManagerCanvas({ size, handleRef, subset }: Polygo
         if (idx === -1) return;
         const poly = polys[idx];
         const result = polygonClipping.union([poly.verts.map(v => [v.x, v.y] as [number, number])], [makeCircle(x, y)]);
+        if (result.length === 0) return;
         polys.splice(idx, 1,
             ...result.map((p, i) => ({ id: i === 0 ? poly.id : nextId.current++, verts: p[0].map(([px, py]) => ({ x: px, y: py })) }))
         );
@@ -122,6 +123,7 @@ export default function PolygonManagerCanvas({ size, handleRef, subset }: Polygo
     }
 
     function onBrushMove(x: number, y: number) {
+        console.log("Brush move to", x, y);
         const now = Date.now();
         if (now - lastMoveTime.current < 16) return;
         lastMoveTime.current = now;
@@ -139,7 +141,7 @@ export default function PolygonManagerCanvas({ size, handleRef, subset }: Polygo
     }
 
     function adjustBrushRadius(delta: number) {
-        brushRadius.current = Math.max(MIN_BRUSH_RADIUS, Math.min(MAX_BRUSH_RADIUS, brushRadius.current + delta * 0.3));
+        brushRadius.current = Math.max(MIN_BRUSH_RADIUS, Math.min(MAX_BRUSH_RADIUS, brushRadius.current + delta * 0.1));
         redraw();
     }
 

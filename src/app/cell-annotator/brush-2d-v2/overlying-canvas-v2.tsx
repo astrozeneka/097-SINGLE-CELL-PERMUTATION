@@ -45,8 +45,7 @@ export function OverlyingCanvasV2({ size, mode, transform, onTransform, onBrush,
             width={size.w}
             height={size.h}
             style={{ position: "absolute", inset: 0, cursor: mode === "brush" ? "none" : mode === "pan" ? "grab" : "crosshair" }}
-            onClick={e => { if (mode === "brush") { const { x, y } = canvasPos(e); onBrush(x, y); } }}
-            onPointerDown={() => { isDown.current = true; }}
+            onPointerDown={e => { isDown.current = true; if (mode === "brush") { const { x, y } = canvasPos(e); onBrush(x, y); } }}
             onPointerUp={() => { isDown.current = false; }}
             onMouseMove={e => {
                 const { x, y } = canvasPos(e);

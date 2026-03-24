@@ -118,12 +118,6 @@ export default function Viewer2d() {
 
     const onSelect = (patientId: string) => {
         setSubset(patientId);
-        /*setLoading(true);
-        loadPatientCsv(patientId).then(data => {
-            setDataSubset(data);
-            setSubset(patientId);
-            setLoading(false);
-        });*/
     }
 
     return (
