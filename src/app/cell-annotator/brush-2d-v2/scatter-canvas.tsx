@@ -4,7 +4,6 @@ import { ColorEncoder, Transform } from "../underlying-canvas";
 import { Polygon } from "./polygon-manager-canvas";
 
 interface ScatterCanvasProps<T> {
-    key: string;
     data: T[];
     xAccessor: (d: T) => number;
     yAccessor: (d: T) => number;
@@ -85,14 +84,13 @@ type GlState = {
     bounds: { minX: number; maxX: number; minY: number; maxY: number };
 };
 
-export function ScatterCanvas<T>({ key, data, xAccessor, yAccessor, colorEncoder, transform, size, polygonMask, polygonMap }: ScatterCanvasProps<T>) {
+export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, transform, size, polygonMask, polygonMap }: ScatterCanvasProps<T>) {
     const canvasRef     = useRef<HTMLCanvasElement>(null);
     const glRef         = useRef<GlState | null>(null);
     const polyMaskRef   = useRef(polygonMask);
     polyMaskRef.current = polygonMask;
 
     useEffect(() => {
-        console.log(key, data, colorEncoder);
 
         const gl = canvasRef.current!.getContext("webgl")!;
         gl.clearColor(0, 0, 0, 1);
@@ -171,7 +169,7 @@ export function ScatterCanvas<T>({ key, data, xAccessor, yAccessor, colorEncoder
 
     useEffect(() => {
         const state = glRef.current;
-        if (!state || size.w === 0 || size.h === 0) return;
+        if (!state || size.w === 0 || size.h === 0 || state.count === 0) return;
         const { gl, count, scaleLoc, offsetLoc, userScaleLoc, userTranslateLoc, bounds } = state;
         const { minX, maxX, minY, maxY } = bounds;
         const canvas = canvasRef.current!;
@@ -195,7 +193,7 @@ export function ScatterCanvas<T>({ key, data, xAccessor, yAccessor, colorEncoder
 
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.drawArrays(gl.POINTS, 0, count);
-    }, [size, transform, polygonMask, colorEncoder]);
+    }, [size, transform, polygonMask, colorEncoder, data]);
 
     useEffect(() => {
         console.log("Data changed, new length:", data.length);

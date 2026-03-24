@@ -82,12 +82,14 @@ export default function Viewer2d() {
     const transformRef = useRef(transform); transformRef.current = transform;
 
     useEffect(() => {
-        setLoading(true);
-        loadPatientCsv(subset).then(data => { 
-            setDataSubset(data); 
-            setSubset(subset);
-            setLoading(false); 
-        });
+        setTimeout(() => {
+            setLoading(true);
+            loadPatientCsv(subset).then(data => { 
+                setDataSubset(data); 
+                setSubset(subset);
+                setLoading(false); 
+            });
+        }, 2000);
     }, [subset]);
 
     useEffect(() => {
