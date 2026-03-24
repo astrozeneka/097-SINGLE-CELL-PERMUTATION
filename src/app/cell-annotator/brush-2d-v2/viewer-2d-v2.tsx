@@ -90,6 +90,8 @@ export default function Viewer2d() {
     const [dataSubset, setDataSubset]     = useState<CellData[]>([]);
     const [loadedSubset, setLoadedSubset] = useState("");
     const [readySubset, setReadySubset]   = useState("");
+    const [rightWidth, setRightWidth] = useState(500);
+    const dragRef = useRef<{ startX: number; startW: number } | null>(null);
 
     const sizeRef      = useRef(size);      sizeRef.current      = size;
     const transformRef = useRef(transform); transformRef.current = transform;
@@ -118,6 +120,22 @@ export default function Viewer2d() {
     const onSelect = (patientId: string) => {
         setSubset(patientId);
     }
+
+    const onDividerMouseDown = (e: React.MouseEvent) => {
+        e.preventDefault();
+        dragRef.current = { startX: e.clientX, startW: rightWidth };
+        const onMove = (ev: MouseEvent) => {
+            const delta = dragRef.current!.startX - ev.clientX;
+            setRightWidth(Math.max(200, Math.min(900, dragRef.current!.startW + delta)));
+        };
+        const onUp = () => {
+            dragRef.current = null;
+            window.removeEventListener("mousemove", onMove);
+            window.removeEventListener("mouseup", onUp);
+        };
+        window.addEventListener("mousemove", onMove);
+        window.addEventListener("mouseup", onUp);
+    };
 
     const scatterData = loadedSubset === subset ? dataSubset : [];
     const isLoading = readySubset !== subset;
@@ -164,7 +182,16 @@ export default function Viewer2d() {
                     pointerEvents: isLoading ? "all" : "none",
                 }} />
             </div>
-            <div style={{ flex: "0 0 500px", background: "#222", color: "#fff", padding: 16 }}>
+            <div
+                onMouseDown={onDividerMouseDown}
+                style={{
+                    width: 5, flexShrink: 0, cursor: "col-resize",
+                    background: "rgba(255,255,255,0.08)",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.22)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
+            />
+            <div style={{ flex: `0 0 ${rightWidth}px`, background: "#222", color: "#fff", padding: 16 }}>
                 <p style={{ fontFamily: "monospace", fontSize: 12 }}>{subset}</p>
                 <p style={{ fontFamily: "monospace", fontSize: 12 }}>{isLoading ? "Loading…" : `Points: ${dataSubset.length}`}</p>
             </div>
