@@ -2,7 +2,8 @@ import { useEffect, useRef } from "react";
 import polygonClipping from "polygon-clipping";
 
 export interface PolygonManagerHandle {
-    addBrushAt: (x: number, y: number) => void;
+    onBrushClick: (x: number, y: number) => void;
+    onBrushMove: (x: number, y: number) => void;
 }
 
 interface PolygonManagerCanvasProps {
@@ -23,6 +24,8 @@ export default function PolygonManagerCanvas({ size, handleRef }: PolygonManager
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const polygons = useRef<{ id: number; verts: { x: number; y: number }[] }[]>([]);
     const nextId = useRef(1);
+    const activePolygonId = useRef<number | null>(null);
+    const lastMoveTime = useRef(0);
 
     function redraw() {
         const ctx = canvasRef.current!.getContext("2d")!;
@@ -48,35 +51,58 @@ export default function PolygonManagerCanvas({ size, handleRef }: PolygonManager
         console.log("==", polygons.current)
     }
 
-    function addBrushAt(x: number, y: number) {
-        const circle: [number, number][] = Array.from({ length: BRUSH_VERTS }, (_, i) => {
+    function makeCircle(x: number, y: number): [number, number][] {
+        return Array.from({ length: BRUSH_VERTS }, (_, i) => {
             const angle = (2 * Math.PI * i) / BRUSH_VERTS;
             return [x + BRUSH_RADIUS * Math.cos(angle), y + BRUSH_RADIUS * Math.sin(angle)];
         });
+    }
 
-        if (polygons.current.length === 0) {
-            polygons.current.push({ id: nextId.current++, verts: circle.map(([px, py]) => ({ x: px, y: py })) });
-        } else {
-            const last = polygons.current[polygons.current.length - 1];
-            const lastRing: [number, number][] = last.verts.map(v => [v.x, v.y]);
-            const result = polygonClipping.union([lastRing], [circle]);
-            polygons.current.splice(polygons.current.length - 1, 1,
-                ...result.map((poly, i) => ({
-                    id: i === 0 ? last.id : nextId.current++,
-                    verts: poly[0].map(([px, py]) => ({ x: px, y: py }))
-                }))
-            );
+    function pointInPolygon(verts: { x: number; y: number }[], px: number, py: number): boolean {
+        let inside = false;
+        for (let i = 0, j = verts.length - 1; i < verts.length; j = i++) {
+            const { x: xi, y: yi } = verts[i], { x: xj, y: yj } = verts[j];
+            if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi)
+                inside = !inside;
         }
+        return inside;
+    }
+
+    function addBrushAt(x: number, y: number) {
+        const id = nextId.current++;
+        polygons.current.push({ id, verts: makeCircle(x, y).map(([px, py]) => ({ x: px, y: py })) });
+        activePolygonId.current = id;
         redraw();
         console.log("Added polygon at", { x, y });
     }
 
     function moveBrushTo(x: number, y: number) {
+        if (activePolygonId.current === null) return;
+        const idx = polygons.current.findIndex(p => p.id === activePolygonId.current);
+        if (idx === -1) return;
+        const poly = polygons.current[idx];
+        const result = polygonClipping.union([poly.verts.map(v => [v.x, v.y] as [number, number])], [makeCircle(x, y)]);
+        polygons.current.splice(idx, 1,
+            ...result.map((p, i) => ({ id: i === 0 ? poly.id : nextId.current++, verts: p[0].map(([px, py]) => ({ x: px, y: py })) }))
+        );
+        redraw();
+    }
 
+    function onBrushClick(x: number, y: number) {
+        const hit = polygons.current.find(p => pointInPolygon(p.verts, x, y));
+        if (hit) { activePolygonId.current = hit.id; moveBrushTo(x, y); }
+        else addBrushAt(x, y);
+    }
+
+    function onBrushMove(x: number, y: number) {
+        const now = Date.now();
+        if (now - lastMoveTime.current < 16) return;
+        lastMoveTime.current = now;
+        moveBrushTo(x, y);
     }
 
     useEffect(() => {
-        if (handleRef) handleRef.current = { addBrushAt };
+        if (handleRef) handleRef.current = { onBrushClick, onBrushMove };
         return () => { if (handleRef) handleRef.current = null; };
     });
 

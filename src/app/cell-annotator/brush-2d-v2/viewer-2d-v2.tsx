@@ -129,7 +129,8 @@ export default function Viewer2d() {
                     mode="brush"
                     transform={transform}
                     onTransform={setTransform}
-                    onBrush={(x, y) => polygonManagerRef.current?.addBrushAt(x, y)}
+                    onBrush={(x, y) => polygonManagerRef.current?.onBrushClick(x, y)}
+                    onBrushMove={(x, y) => polygonManagerRef.current?.onBrushMove(x, y)}
                 />
                 <SubsetSelector patients={ALL_PATIENTS} selected={subset} onSelect={onSelect} />
             </div>
