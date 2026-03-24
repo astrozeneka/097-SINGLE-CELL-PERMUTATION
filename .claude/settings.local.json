@@ -4,7 +4,8 @@
       "WebFetch(domain:pypi.org)"
     ],
     "additionalDirectories": [
-      "D:\\Ryan\\187-SARCOMA-DATA-PREPARATION\\ratios_data_39p701uqfl3mmuex2r6"
+      "D:\\Ryan\\187-SARCOMA-DATA-PREPARATION\\ratios_data_39p701uqfl3mmuex2r6",
+      "D:\\Ryan\\191-SPLIT-COSMIX-SAMPLES\\splitted\\roi_annotated"
     ]
   }
 }

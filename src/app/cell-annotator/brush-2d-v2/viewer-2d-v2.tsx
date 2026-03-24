@@ -6,22 +6,32 @@ import PolygonManagerCanvas from "./polygon-manager-canvas";
 import type { PolygonManagerHandle } from "./polygon-manager-canvas";
 import { OverlyingCanvasV2 } from "./overlying-canvas-v2";
 import { ScatterCanvas } from "./scatter-canvas";
-import sampleCsv from "./sample-data-v2";
 
 interface CellData {
     id: string;
     x: number;
     y: number;
     cluster: number;
-    patientId: string;
 }
 
-const ALL_DATA: CellData[] = sampleCsv.trim().split("\n").slice(1).map(line => {
-    const [id, x, y, cluster, , patientId] = line.split(",");
-    return { id, x: +x, y: +y, cluster: +cluster, patientId };
-});
+const ALL_PATIENTS = [
+    "LARC_A_S19_31776B1", "LARC_A_S20_12903C1", "LARC_A_S21_12210A3",
+    "LARC_A_S21_1580B1", "LARC_A_S21_19043A1", "LARC_A_S22_1068A1",
+    "LARC_A_S22_12362A1", "LARC_A_SP18_2074B1", "LARC_A_SP21_204B1",
+    "LARC_B_S19_12126B1", "LARC_B_S19_25142A1", "LARC_B_S20_19504A1",
+    "LARC_B_S20_23887A1", "LARC_B_S20_25858B1", "LARC_B_S21_12126A1",
+    "LARC_B_S21_8615C1", "LARC_B_SP19_4321C1", "LARC_B_SP22_1201A1",
+    "LARC_B_UNIDENTIFIED",
+];
 
-const ALL_PATIENTS = [...new Set(ALL_DATA.map(d => d.patientId))];
+async function loadPatientCsv(patientId: string): Promise<CellData[]> {
+    const res = await fetch(`/cell-annotator-data/${patientId}_annotated.csv`);
+    const text = await res.text();
+    return text.trim().split("\n").slice(1).map(line => {
+        const [id, x, y, cluster] = line.split(",");
+        return { id, x: +x, y: +y, cluster: +cluster };
+    });
+}
 
 const byClusterEncoder: ColorEncoder<CellData> = {
     attributes: [{ name: "a_cluster", size: 1, feed: d => d.cluster }],
@@ -65,10 +75,20 @@ export default function Viewer2d() {
     const [size, setSize]           = useState({ w: 0, h: 0 });
     const [transform, setTransform] = useState<Transform>(INIT_TRANSFORM);
     const [subset, setSubset]         = useState(ALL_PATIENTS[0]);
-    const [dataSubset, setDataSubset] = useState(() => ALL_DATA.filter(d => d.patientId === ALL_PATIENTS[0]));
+    const [dataSubset, setDataSubset] = useState<CellData[]>([]);
+    const [loading, setLoading]       = useState(true);
 
     const sizeRef      = useRef(size);      sizeRef.current      = size;
     const transformRef = useRef(transform); transformRef.current = transform;
+
+    useEffect(() => {
+        setLoading(true);
+        loadPatientCsv(subset).then(data => { 
+            // console.log(`Loaded ${data.length} points for ${subset}`);
+            setDataSubset(data); 
+            setLoading(false); 
+        });
+    }, [subset]);
 
     useEffect(() => {
         const el = containerRef.current!;
@@ -81,7 +101,7 @@ export default function Viewer2d() {
         <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100vh" }}>
             <div ref={containerRef} style={{ position: "relative", flex: "1 1 auto", background: "#111" }}>
                 <ScatterCanvas
-                    key={subset}
+                    key={subset}  // Force remount when subset changes, to reset WebGL state
                     data={dataSubset}
                     xAccessor={d => d.x}
                     yAccessor={d => d.y}
@@ -102,11 +122,11 @@ export default function Viewer2d() {
                     onTransform={setTransform}
                     onBrush={(x, y) => polygonManagerRef.current?.addBrushAt(x, y)}
                 />
-                <SubsetSelector patients={ALL_PATIENTS} selected={subset} onSelect={p => { setSubset(p); setDataSubset(ALL_DATA.filter(d => d.patientId === p)); }} />
+                <SubsetSelector patients={ALL_PATIENTS} selected={subset} onSelect={setSubset} />
             </div>
             <div style={{ flex: "0 0 300px", background: "#222", color: "#fff", padding: 16 }}>
                 <p style={{ fontFamily: "monospace", fontSize: 12 }}>{subset}</p>
-                <p style={{ fontFamily: "monospace", fontSize: 12 }}>Points: {dataSubset.length}</p>
+                <p style={{ fontFamily: "monospace", fontSize: 12 }}>{loading ? "Loading…" : `Points: ${dataSubset.length}`}</p>
             </div>
         </div>
     );
