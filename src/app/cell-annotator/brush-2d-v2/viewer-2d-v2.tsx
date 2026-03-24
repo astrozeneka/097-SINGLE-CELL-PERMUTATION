@@ -123,6 +123,7 @@ export default function Viewer2d() {
                     size={size}
                     transform={transform}
                     onTransform={setTransform}
+                    subset={subset}
                 />
                 <OverlyingCanvasV2
                     size={size}
@@ -131,6 +132,9 @@ export default function Viewer2d() {
                     onTransform={setTransform}
                     onBrush={(x, y) => polygonManagerRef.current?.onBrushClick(x, y)}
                     onBrushMove={(x, y) => polygonManagerRef.current?.onBrushMove(x, y)}
+                    onCursorMove={(x, y) => polygonManagerRef.current?.setCursorPos(x, y)}
+                    onCursorLeave={() => polygonManagerRef.current?.clearCursor()}
+                    onBrushResize={delta => polygonManagerRef.current?.adjustBrushRadius(delta)}
                 />
                 <SubsetSelector patients={ALL_PATIENTS} selected={subset} onSelect={onSelect} />
             </div>
