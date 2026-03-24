@@ -41,6 +41,18 @@ const byClusterEncoder: ColorEncoder<CellData> = {
 
 const INIT_TRANSFORM: Transform = { x: 0, y: 0, scale: 1 };
 
+function fitTransform(data: CellData[], w: number, h: number): Transform {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const d of data) {
+        if (d.x < minX) minX = d.x; if (d.x > maxX) maxX = d.x;
+        if (d.y < minY) minY = d.y; if (d.y > maxY) maxY = d.y;
+    }
+    const dataW = maxX - minX, dataH = maxY - minY;
+    const scale = dataW / dataH > w / h ? w / dataW : h / dataH;
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    return { x: w / 2 - cx * scale, y: h / 2 + cy * scale, scale };
+}
+
 function SubsetSelector({ patients, selected, onSelect }: {
     patients: string[];
     selected: string;
@@ -80,6 +92,7 @@ export default function Viewer2d() {
 
     const sizeRef      = useRef(size);      sizeRef.current      = size;
     const transformRef = useRef(transform); transformRef.current = transform;
+    const fittedDataRef = useRef<CellData[] | null>(null);
 
     useEffect(() => {
         setLoading(true);
@@ -91,6 +104,12 @@ export default function Viewer2d() {
     }, [subset]);
 
     useEffect(() => {
+        if (dataSubset.length === 0 || size.w === 0 || fittedDataRef.current === dataSubset) return;
+        fittedDataRef.current = dataSubset;
+        setTransform(fitTransform(dataSubset, size.w, size.h));
+    }, [dataSubset, size]);
+
+    useEffect(() => {
         const el = containerRef.current!;
         const ro = new ResizeObserver(() => setSize({ w: el.clientWidth, h: el.clientHeight }));
         ro.observe(el);
@@ -98,12 +117,13 @@ export default function Viewer2d() {
     }, []);
 
     const onSelect = (patientId: string) => {
-        setLoading(true);
+        setSubset(patientId);
+        /*setLoading(true);
         loadPatientCsv(patientId).then(data => {
             setDataSubset(data);
             setSubset(patientId);
             setLoading(false);
-        });
+        });*/
     }
 
     return (

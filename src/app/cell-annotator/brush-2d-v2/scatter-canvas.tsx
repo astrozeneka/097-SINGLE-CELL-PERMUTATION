@@ -28,18 +28,17 @@ function buildVertShader(enc: ColorEncoder<any>): string {
 attribute vec2 a_pos;
 ${attrDecls}
 attribute float a_polygon;
-uniform vec2 u_scale;
-uniform vec2 u_offset;
-uniform float u_userScale;
-uniform vec2 u_userTranslate;
+uniform float u_pixelScale;
+uniform vec2 u_pixelOffset;
+uniform vec2 u_size;
 ${varyingDecls}
 varying float v_polygon;
 ${uniformDecls}
 void main() {
-    vec2 clip = a_pos * u_scale + u_offset;
-    clip = clip * u_userScale + u_userTranslate;
-    gl_Position = vec4(clip, 0, 1);
-    gl_PointSize = max(1.0, 2.0 * u_userScale);
+    float sx = a_pos.x * u_pixelScale + u_pixelOffset.x;
+    float sy = -a_pos.y * u_pixelScale + u_pixelOffset.y;
+    gl_Position = vec4(2.0 * sx / u_size.x - 1.0, 1.0 - 2.0 * sy / u_size.y, 0.0, 1.0);
+    gl_PointSize = 2.0;
 ${assigns}
     v_polygon = a_polygon;
 }`;
@@ -76,12 +75,10 @@ function compileShader(gl: WebGLRenderingContext, type: number, src: string) {
 type GlState = {
     gl: WebGLRenderingContext;
     count: number;
-    scaleLoc: WebGLUniformLocation;
-    offsetLoc: WebGLUniformLocation;
-    userScaleLoc: WebGLUniformLocation;
-    userTranslateLoc: WebGLUniformLocation;
+    pixelScaleLoc: WebGLUniformLocation;
+    pixelOffsetLoc: WebGLUniformLocation;
+    sizeLoc: WebGLUniformLocation;
     polygonBuffer: WebGLBuffer;
-    bounds: { minX: number; maxX: number; minY: number; maxY: number };
 };
 
 export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, transform, size, polygonMask, polygonMap }: ScatterCanvasProps<T>) {
@@ -103,7 +100,6 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
 
         const floatsPerPoint = 2 + colorEncoder.attributes.reduce((s, a) => s + a.size, 0);
         const buffer = new Float32Array(data.length * floatsPerPoint);
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
         for (let i = 0; i < data.length; i++) {
             let off = i * floatsPerPoint;
             const x = xAccessor(data[i]), y = yAccessor(data[i]);
@@ -113,8 +109,6 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
                 if (typeof v === "number") buffer[off++] = v;
                 else for (const n of v as number[]) buffer[off++] = n;
             }
-            if (x < minX) minX = x; if (x > maxX) maxX = x;
-            if (y < minY) minY = y; if (y > maxY) maxY = y;
         }
 
         const mainBuf = gl.createBuffer()!;
@@ -150,12 +144,10 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
 
         glRef.current = {
             gl, count: data.length,
-            scaleLoc:         gl.getUniformLocation(prog, "u_scale")!,
-            offsetLoc:        gl.getUniformLocation(prog, "u_offset")!,
-            userScaleLoc:     gl.getUniformLocation(prog, "u_userScale")!,
-            userTranslateLoc: gl.getUniformLocation(prog, "u_userTranslate")!,
+            pixelScaleLoc:  gl.getUniformLocation(prog, "u_pixelScale")!,
+            pixelOffsetLoc: gl.getUniformLocation(prog, "u_pixelOffset")!,
+            sizeLoc:        gl.getUniformLocation(prog, "u_size")!,
             polygonBuffer,
-            bounds: { minX, maxX, minY, maxY },
         };
     }, [data, colorEncoder]);
 
@@ -170,8 +162,7 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
     useEffect(() => {
         const state = glRef.current;
         if (!state || size.w === 0 || size.h === 0 || state.count === 0) return;
-        const { gl, count, scaleLoc, offsetLoc, userScaleLoc, userTranslateLoc, bounds } = state;
-        const { minX, maxX, minY, maxY } = bounds;
+        const { gl, count, pixelScaleLoc, pixelOffsetLoc, sizeLoc } = state;
         const canvas = canvasRef.current!;
 
         if (canvas.width !== size.w || canvas.height !== size.h) {
@@ -180,16 +171,9 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
             gl.viewport(0, 0, size.w, size.h);
         }
 
-        const dataW = maxX - minX, dataH = maxY - minY;
-        const s  = (dataW / dataH > size.w / size.h) ? size.w / dataW : size.h / dataH;
-        const sx = s * 2 / size.w, sy = s * 2 / size.h;
-        const flipX = transform.invertX ? -1 : 1;
-        const flipY = transform.invertY ? -1 : 1;
-        gl.uniform2f(scaleLoc,  flipX * sx, flipY * sy);
-        gl.uniform2f(offsetLoc, -flipX * (minX + dataW / 2) * sx, -flipY * (minY + dataH / 2) * sy);
-
-        gl.uniform1f(userScaleLoc, transform.scale);
-        gl.uniform2f(userTranslateLoc, 2 * transform.x / size.w, -2 * transform.y / size.h);
+        gl.uniform1f(pixelScaleLoc, transform.scale);
+        gl.uniform2f(pixelOffsetLoc, transform.x, transform.y);
+        gl.uniform2f(sizeLoc, size.w, size.h);
 
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.drawArrays(gl.POINTS, 0, count);
