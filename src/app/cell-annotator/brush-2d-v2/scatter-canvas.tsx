@@ -195,9 +195,5 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
         gl.drawArrays(gl.POINTS, 0, count);
     }, [size, transform, polygonMask, colorEncoder, data]);
 
-    useEffect(() => {
-        console.log("Data changed, new length:", data.length);
-    }, [data]);
-
     return <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />;
 }
