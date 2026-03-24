@@ -60,7 +60,7 @@ function SubsetSelector({ patients, selected, onSelect }: {
 }) {
     return (
         <div className="thin-scrollbar" style={{
-            position: "absolute", bottom: 5, left: "50%", transform: "translateX(-50%)",
+            position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)",
             display: "flex", gap: 6, padding: "6px 10px",
             background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)",
             borderRadius: 10, overflowX: "auto", maxWidth: "100%",
@@ -86,28 +86,27 @@ export default function Viewer2d() {
     const polygonManagerRef = useRef<PolygonManagerHandle | null>(null);
     const [size, setSize]           = useState({ w: 0, h: 0 });
     const [transform, setTransform] = useState<Transform>(INIT_TRANSFORM);
-    const [subset, setSubset]         = useState(ALL_PATIENTS[0]);
-    const [dataSubset, setDataSubset] = useState<CellData[]>([]);
-    const [loading, setLoading]       = useState(true);
+    const [subset, setSubset]             = useState(ALL_PATIENTS[0]);
+    const [dataSubset, setDataSubset]     = useState<CellData[]>([]);
+    const [loadedSubset, setLoadedSubset] = useState("");
+    const [readySubset, setReadySubset]   = useState("");
 
     const sizeRef      = useRef(size);      sizeRef.current      = size;
     const transformRef = useRef(transform); transformRef.current = transform;
     const fittedDataRef = useRef<CellData[] | null>(null);
 
     useEffect(() => {
-        setLoading(true);
-        loadPatientCsv(subset).then(data => { 
-            setDataSubset(data); 
-            setSubset(subset);
-            setLoading(false); 
+        loadPatientCsv(subset).then(data => {
+            setDataSubset(data);
+            setLoadedSubset(subset);
         });
     }, [subset]);
 
     useEffect(() => {
-        if (dataSubset.length === 0 || size.w === 0 || fittedDataRef.current === dataSubset) return;
+        if (loadedSubset !== subset || dataSubset.length === 0 || size.w === 0 || fittedDataRef.current === dataSubset) return;
         fittedDataRef.current = dataSubset;
         setTransform(fitTransform(dataSubset, size.w, size.h));
-    }, [dataSubset, size]);
+    }, [dataSubset, loadedSubset, size, subset]);
 
     useEffect(() => {
         const el = containerRef.current!;
@@ -120,17 +119,21 @@ export default function Viewer2d() {
         setSubset(patientId);
     }
 
+    const scatterData = loadedSubset === subset ? dataSubset : [];
+    const isLoading = readySubset !== subset;
+
     return (
         <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100vh" }}>
             <div ref={containerRef} style={{ position: "relative", flex: "1 1 auto", background: "#111" }}>
                 <ScatterCanvas
                     key={subset}  // Force remount when subset changes, to reset WebGL state
-                    data={dataSubset}
+                    data={scatterData}
                     xAccessor={d => d.x}
                     yAccessor={d => d.y}
                     colorEncoder={byClusterEncoder}
                     size={size}
                     transform={transform}
+                    onReady={() => setReadySubset(subset)}
                 />
                 <PolygonManagerCanvas
                     handleRef={polygonManagerRef}
@@ -151,10 +154,20 @@ export default function Viewer2d() {
                     onBrushResize={delta => polygonManagerRef.current?.adjustBrushRadius(delta)}
                 />
                 <SubsetSelector patients={ALL_PATIENTS} selected={subset} onSelect={onSelect} />
+                <div style={{
+                    position: "absolute", inset: 0, zIndex: 50,
+                    background: "rgba(17,17,17,0.5)",
+                    backdropFilter: "blur(14px)",
+                    WebkitBackdropFilter: "blur(14px)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    transition: isLoading ? "none" : "opacity 0.35s ease",
+                    opacity: isLoading ? 1 : 0,
+                    pointerEvents: isLoading ? "all" : "none",
+                }} />
             </div>
             <div style={{ flex: "0 0 300px", background: "#222", color: "#fff", padding: 16 }}>
                 <p style={{ fontFamily: "monospace", fontSize: 12 }}>{subset}</p>
-                <p style={{ fontFamily: "monospace", fontSize: 12 }}>{loading ? "Loading…" : `Points: ${dataSubset.length}`}</p>
+                <p style={{ fontFamily: "monospace", fontSize: 12 }}>{isLoading ? "Loading…" : `Points: ${dataSubset.length}`}</p>
             </div>
         </div>
     );

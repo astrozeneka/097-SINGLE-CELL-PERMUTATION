@@ -14,6 +14,7 @@ interface ScatterCanvasProps<T> {
     polygonMask?: Float32Array | null;
     // CPU-side lookup: float key → set of polygons owning that key.
     polygonMap?: Map<number, Set<Polygon>>;
+    onReady?: () => void;
 }
 
 function glslType(size: 1 | 2 | 3 | 4) { return size === 1 ? "float" : `vec${size}`; }
@@ -81,14 +82,17 @@ type GlState = {
     polygonBuffer: WebGLBuffer;
 };
 
-export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, transform, size, polygonMask, polygonMap }: ScatterCanvasProps<T>) {
-    const canvasRef     = useRef<HTMLCanvasElement>(null);
-    const glRef         = useRef<GlState | null>(null);
-    const polyMaskRef   = useRef(polygonMask);
-    polyMaskRef.current = polygonMask;
+export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, transform, size, polygonMask, polygonMap, onReady }: ScatterCanvasProps<T>) {
+    const canvasRef      = useRef<HTMLCanvasElement>(null);
+    const glRef          = useRef<GlState | null>(null);
+    const polyMaskRef    = useRef(polygonMask);
+    polyMaskRef.current  = polygonMask;
+    const onReadyRef     = useRef(onReady);
+    onReadyRef.current   = onReady;
+    const readyCalledRef = useRef(false);
 
     useEffect(() => {
-
+        readyCalledRef.current = false;
         const gl = canvasRef.current!.getContext("webgl")!;
         gl.clearColor(0, 0, 0, 1);
 
@@ -177,6 +181,10 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
 
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.drawArrays(gl.POINTS, 0, count);
+        if (!readyCalledRef.current) {
+            readyCalledRef.current = true;
+            onReadyRef.current?.();
+        }
     }, [size, transform, polygonMask, colorEncoder, data]);
 
     return <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />;
