@@ -138,7 +138,7 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
             else if (u.type === "vec3") gl.uniform3fv(loc, u.value as number[]);
             else                        gl.uniform4fv(loc, u.value as number[]);
         }
-
+        console.log("PMR", polyMaskRef.current);
         const polygonBuffer = gl.createBuffer()!;
         gl.bindBuffer(gl.ARRAY_BUFFER, polygonBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, polyMaskRef.current ?? new Float32Array(data.length).fill(0), gl.DYNAMIC_DRAW);

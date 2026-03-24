@@ -39,6 +39,15 @@ const byClusterEncoder: ColorEncoder<CellData> = {
     colorGlsl: `return vec4(hue2rgb(a_cluster / 23.0), 1.0);`,
 };
 
+const byClusterSelectionEncoder: ColorEncoder<CellData> = {
+    attributes: [{ name: "a_cluster", size: 1, feed: d => d.cluster }],
+    uniforms: [],
+    colorGlsl: `
+        if (a_polygon == 0.0) return vec4(0.35, 0.35, 0.35, 1.0);
+        return vec4(hue2rgb(a_cluster / 23.0), 1.0);
+    `,
+};
+
 const INIT_TRANSFORM: Transform = { x: 0, y: 0, scale: 1 };
 
 function fitTransform(data: CellData[], w: number, h: number): Transform {
@@ -191,9 +200,19 @@ export default function Viewer2d() {
                 onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.22)")}
                 onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
             />
-            <div style={{ flex: `0 0 ${rightWidth}px`, background: "#222", color: "#fff", padding: 16 }}>
-                <p style={{ fontFamily: "monospace", fontSize: 12 }}>{subset}</p>
+            <div style={{ flex: `0 0 ${rightWidth}px`, background: "#222", color: "#fff", padding: 16, position: 'relative'}}>
+                {/*<p style={{ fontFamily: "monospace", fontSize: 12 }}>{subset}</p>
                 <p style={{ fontFamily: "monospace", fontSize: 12 }}>{isLoading ? "Loading…" : `Points: ${dataSubset.length}`}</p>
+                */}
+                
+                <ScatterCanvas
+                    data={scatterData}
+                    xAccessor={d => d.x}
+                    yAccessor={d => d.y}
+                    colorEncoder={byClusterSelectionEncoder}
+                    size={{ w: rightWidth, h: size.h }}
+                    transform={transform}
+                ></ScatterCanvas>
             </div>
             <SubsetSelector patients={ALL_PATIENTS} selected={subset} onSelect={onSelect} />
         </div>
