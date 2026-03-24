@@ -123,7 +123,7 @@ export default function Viewer2d() {
     const isLoading = readySubset !== subset;
 
     return (
-        <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100vh" }}>
+        <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100vh", position: "relative" }}>
             <div ref={containerRef} style={{ position: "relative", flex: "1 1 auto", background: "#111" }}>
                 <ScatterCanvas
                     key={subset}  // Force remount when subset changes, to reset WebGL state
@@ -153,7 +153,6 @@ export default function Viewer2d() {
                     onCursorLeave={() => polygonManagerRef.current?.clearCursor()}
                     onBrushResize={delta => polygonManagerRef.current?.adjustBrushRadius(delta)}
                 />
-                <SubsetSelector patients={ALL_PATIENTS} selected={subset} onSelect={onSelect} />
                 <div style={{
                     position: "absolute", inset: 0, zIndex: 50,
                     background: "rgba(17,17,17,0.5)",
@@ -165,10 +164,11 @@ export default function Viewer2d() {
                     pointerEvents: isLoading ? "all" : "none",
                 }} />
             </div>
-            <div style={{ flex: "0 0 300px", background: "#222", color: "#fff", padding: 16 }}>
+            <div style={{ flex: "0 0 500px", background: "#222", color: "#fff", padding: 16 }}>
                 <p style={{ fontFamily: "monospace", fontSize: 12 }}>{subset}</p>
                 <p style={{ fontFamily: "monospace", fontSize: 12 }}>{isLoading ? "Loading…" : `Points: ${dataSubset.length}`}</p>
             </div>
+            <SubsetSelector patients={ALL_PATIENTS} selected={subset} onSelect={onSelect} />
         </div>
     );
 }
