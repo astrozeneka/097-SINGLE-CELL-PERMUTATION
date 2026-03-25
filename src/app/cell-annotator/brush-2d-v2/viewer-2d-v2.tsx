@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ColorEncoder, Transform } from "../underlying-canvas";
-import PolygonManagerCanvas from "./polygon-manager-canvas";
+import PolygonManagerCanvas, { pointInPolygon } from "./polygon-manager-canvas";
 import type { PolygonManagerHandle } from "./polygon-manager-canvas";
 import { OverlyingCanvasV2 } from "./overlying-canvas-v2";
 import { ScatterCanvas } from "./scatter-canvas";
@@ -100,6 +100,7 @@ export default function Viewer2d() {
     const [loadedSubset, setLoadedSubset] = useState("");
     const [readySubset, setReadySubset]   = useState("");
     const [rightWidth, setRightWidth] = useState(500);
+    const [polygons, setPolygons] = useState<{ verts: { x: number; y: number }[] }[]>([]);
     const dragRef = useRef<{ startX: number; startW: number } | null>(null);
 
     const sizeRef      = useRef(size);      sizeRef.current      = size;
@@ -126,8 +127,19 @@ export default function Viewer2d() {
         return () => ro.disconnect();
     }, []);
 
+    const polygonMask = useMemo(() => {
+        if (polygons.length === 0) return null;
+        const mask = new Float32Array(dataSubset.length);
+        for (let i = 0; i < dataSubset.length; i++) {
+            const { x, y } = dataSubset[i];
+            if (polygons.some(p => pointInPolygon(p.verts, x, y))) mask[i] = 1.0;
+        }
+        return mask;
+    }, [dataSubset, polygons]);
+
     const onSelect = (patientId: string) => {
         setSubset(patientId);
+        setPolygons([]);
     }
 
     const onDividerMouseDown = (e: React.MouseEvent) => {
@@ -168,6 +180,7 @@ export default function Viewer2d() {
                     transform={transform}
                     onTransform={setTransform}
                     subset={subset}
+                    onPolygonsChange={setPolygons}
                 />
                 <OverlyingCanvasV2
                     size={size}
@@ -212,6 +225,7 @@ export default function Viewer2d() {
                     colorEncoder={byClusterSelectionEncoder}
                     size={{ w: rightWidth, h: size.h }}
                     transform={transform}
+                    polygonMask={polygonMask}
                 ></ScatterCanvas>
             </div>
             <SubsetSelector patients={ALL_PATIENTS} selected={subset} onSelect={onSelect} />

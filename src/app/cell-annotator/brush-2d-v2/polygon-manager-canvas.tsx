@@ -15,6 +15,7 @@ interface PolygonManagerCanvasProps {
     onTransform: (transform: any) => void;
     handleRef?: React.MutableRefObject<PolygonManagerHandle | null>;
     subset: string;
+    onPolygonsChange?: (polygons: { verts: { x: number; y: number }[] }[]) => void;
 }
 
 export class Polygon {
@@ -26,7 +27,17 @@ const BRUSH_VERTS = 16;
 const MIN_BRUSH_RADIUS = 10;
 const MAX_BRUSH_RADIUS = 300;
 
-export default function PolygonManagerCanvas({ size, transform, handleRef, subset }: PolygonManagerCanvasProps) {
+export function pointInPolygon(verts: { x: number; y: number }[], px: number, py: number): boolean {
+    let inside = false;
+    for (let i = 0, j = verts.length - 1; i < verts.length; j = i++) {
+        const { x: xi, y: yi } = verts[i], { x: xj, y: yj } = verts[j];
+        if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi)
+            inside = !inside;
+    }
+    return inside;
+}
+
+export default function PolygonManagerCanvas({ size, transform, handleRef, subset, onPolygonsChange }: PolygonManagerCanvasProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const polygonsBySubset = useRef<Map<string, { id: number; verts: { x: number; y: number }[] }[]>>(new Map());
     const subsetRef = useRef(subset);
@@ -102,22 +113,13 @@ export default function PolygonManagerCanvas({ size, transform, handleRef, subse
         });
     }
 
-    function pointInPolygon(verts: { x: number; y: number }[], px: number, py: number): boolean {
-        let inside = false;
-        for (let i = 0, j = verts.length - 1; i < verts.length; j = i++) {
-            const { x: xi, y: yi } = verts[i], { x: xj, y: yj } = verts[j];
-            if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi)
-                inside = !inside;
-        }
-        return inside;
-    }
-
     function addBrushAt(sx: number, sy: number) {
         const { x, y } = screenToData(sx, sy);
         const id = nextId.current++;
         getPolygons().push({ id, verts: makeCircle(x, y).map(([px, py]) => ({ x: px, y: py })) });
         activePolygonId.current = id;
         redraw();
+        onPolygonsChange?.([...getPolygons()]);
     }
 
     function moveBrushTo(sx: number, sy: number) {
@@ -133,6 +135,7 @@ export default function PolygonManagerCanvas({ size, transform, handleRef, subse
             ...result.map((p, i) => ({ id: i === 0 ? poly.id : nextId.current++, verts: p[0].map(([px, py]) => ({ x: px, y: py })) }))
         );
         redraw();
+        onPolygonsChange?.([...getPolygons()]);
     }
 
     function onBrushClick(sx: number, sy: number) {
