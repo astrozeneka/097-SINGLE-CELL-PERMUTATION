@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { OverlyingCanvasV2 } from "./overlying-canvas-v2";
-import PolygonManagerCanvas, { PolygonManagerHandle } from "./polygon-manager-canvas";
+import PolygonManagerCanvas, { PolygonManagerHandle, pointInPolygon } from "./polygon-manager-canvas";
 import { ScatterCanvas } from "./scatter-canvas";
 import { ColorEncoder, Transform } from "../underlying-canvas";
 import SubsetSelectorV2_1 from "./subset-selector-v2.1";
@@ -31,6 +31,15 @@ const byClusterEncoder: ColorEncoder<_CellData> = {
     attributes: [{ name: "a_cluster", size: 1, feed: d => d.cluster }],
     uniforms: [],
     colorGlsl: `return vec4(hue2rgb(a_cluster / 23.0), 1.0);`,
+};
+
+const byClusterSelectionEncoder: ColorEncoder<_CellData> = {
+    attributes: [{ name: "a_cluster", size: 1, feed: d => d.cluster }],
+    uniforms: [],
+    colorGlsl: `
+        if (a_polygon == 0.0) return vec4(0.35, 0.35, 0.35, 1.0);
+        return vec4(hue2rgb(a_cluster / 23.0), 1.0);
+    `,
 };
 
 export default function Viewer2dPCA_viewer() {
@@ -86,6 +95,18 @@ export default function Viewer2dPCA_viewer() {
         return () => rcRo.disconnect();
     }, []);
 
+    const polygonMask = useMemo(() => {
+        if (polygons.length === 0) return null;
+        // AN idea lcase is to put this inside the scatter canvas ?? (maybe not)
+        const mask = new Float32Array(pointsDataSubset.length);
+        for (let i = 0; i < pointsDataSubset.length; i++) {
+            const { umap_1, umap_2 } = pointsDataSubset[i];
+            if (polygons.some(p => pointInPolygon(p.verts, umap_1, umap_2))) mask[i] = 1.0;
+        }
+        console.log("Mask", mask)
+        return mask;
+    }, [pointsDataSubset, polygons]);
+
 
     const onDividerMouseDown = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -114,11 +135,12 @@ export default function Viewer2dPCA_viewer() {
                     data={pointsDataSubset}
                     xAccessor={d => d.x}
                     yAccessor={d => d.y}
-                    colorEncoder={byClusterEncoder}
+                    colorEncoder={byClusterSelectionEncoder}
                     size={lcSize}
                     transform={ lcTransform }
                     setTransform={setLcTransform}
                     onReady={() => {}}
+                    polygonMask={polygonMask}
                 ></ScatterCanvas>
                 <OverlyingCanvasV2
                     size={lcSize}
@@ -171,7 +193,11 @@ export default function Viewer2dPCA_viewer() {
                     mode="brush"
                     transform={rcTransform}
                     onTransform={setRcTransform}
-                    onBrush={() => {}}
+                    onBrush={(x, y) => polygonManagerRef.current?.onBrushClick(x, y)}
+                    onBrushMove={(x, y) => polygonManagerRef.current?.onBrushMove(x, y)}
+                    onCursorMove={(x, y) => polygonManagerRef.current?.setCursorPos(x, y)}
+                    onCursorLeave={() => polygonManagerRef.current?.clearCursor()}
+                    onBrushResize={delta => polygonManagerRef.current?.adjustBrushRadius(delta)}
                 ></OverlyingCanvasV2>
             </div>
         </div>
