@@ -5,7 +5,7 @@ import { OverlyingCanvasV2 } from "./overlying-canvas-v2";
 import PolygonManagerCanvas, { PolygonManagerHandle } from "./polygon-manager-canvas";
 import { ScatterCanvas } from "./scatter-canvas";
 import { ColorEncoder, Transform } from "../underlying-canvas";
-// import SubsetSelectorV2_1 from "./subset-selector-v2.1";
+import SubsetSelectorV2_1 from "./subset-selector-v2.1";
 
 interface _CellData {
     id: string;
@@ -61,17 +61,17 @@ export default function Viewer2dPCA_viewer() {
         loadAllPatientsCsv().then(data => {
             setPointsData(data);
             // setLoadedSubset("all"); 
-            /*let patients = Array.from(new Set(data.map(d => d.SampleId)));
+            let patients = Array.from(new Set(data.map(d => d.SampleId)));
             setPatients(patients);
-            setLcSubset(patients[0]);*/
+            setLcSubset(patients[0]);
         });
     }, []);
 
-    /*useEffect(() => {
+    useEffect(() => {
         if (lcSubset) {
             setPointsDataSubset(pointsData.filter(d => d.SampleId === lcSubset));
         }
-    }, [lcSubset, pointsData]);*/
+    }, [lcSubset, pointsData]);
 
     useEffect(() => {
         const lc = lcRef.current!;
@@ -103,16 +103,12 @@ export default function Viewer2dPCA_viewer() {
         window.addEventListener("mouseup", onUp);
     };
 
-    useEffect(()=>{
-        console.log("T", rcTransform);
-    }, [rcTransform]);
-
     return (
         
         <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100vh", position: "relative" }}>
             <div ref={lcRef} style={{ position: "relative", flex: "1 1 auto", background: "#111" }}>
                 
-                {/* 
+                
                 <ScatterCanvas
                     key={lcSubset}
                     data={pointsDataSubset}
@@ -136,7 +132,7 @@ export default function Viewer2dPCA_viewer() {
                     subset={lcSubset}
                     onSubsetChange={setLcSubset}
                 ></SubsetSelectorV2_1>
-                */}
+                
             </div>
             <div
                 onMouseDown={onDividerMouseDown}

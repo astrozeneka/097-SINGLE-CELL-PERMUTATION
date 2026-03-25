@@ -109,8 +109,6 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
     setTransformRef.current = setTransform;
 
     useEffect(() => {
-        console.log("data", data);
-
         readyCalledRef.current = false;
         const gl = canvasRef.current!.getContext("webgl")!;
         gl.clearColor(0, 0, 0, 1);
@@ -157,7 +155,6 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
             else if (u.type === "vec3") gl.uniform3fv(loc, u.value as number[]);
             else                        gl.uniform4fv(loc, u.value as number[]);
         }
-        console.log("PMR", polyMaskRef.current);
         const polygonBuffer = gl.createBuffer()!;
         gl.bindBuffer(gl.ARRAY_BUFFER, polygonBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, polyMaskRef.current ?? new Float32Array(data.length).fill(0), gl.DYNAMIC_DRAW);
@@ -184,14 +181,12 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
 
     useEffect(() => {
         const state = glRef.current;
-        console.log(state, size)
         if (!state || size.w === 0 || size.h === 0 || state.count === 0) return;
         if (setTransformRef.current && fittedDataRef.current !== data) {
             fittedDataRef.current = data;
             setTransformRef.current(fitTransform(data, xAccessor, yAccessor, size.w, size.h));
             return;
         }
-        console.log("all", size, transform, data);
         const { gl, count, pixelScaleLoc, pixelOffsetLoc, sizeLoc } = state;
         const canvas = canvasRef.current!;
 
