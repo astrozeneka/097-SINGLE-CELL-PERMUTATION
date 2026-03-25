@@ -167,7 +167,9 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
 
     useEffect(() => {
         const state = glRef.current;
+        console.log(state, size)
         if (!state || size.w === 0 || size.h === 0 || state.count === 0) return;
+        console.log("all", size, transform, data);
         const { gl, count, pixelScaleLoc, pixelOffsetLoc, sizeLoc } = state;
         const canvas = canvasRef.current!;
 

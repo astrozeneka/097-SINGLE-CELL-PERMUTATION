@@ -33,8 +33,11 @@ const byClusterEncoder: ColorEncoder<_CellData> = {
 };
 
 export default function Viewer2dPCA_viewer() {
-    const containerRef = useRef<HTMLDivElement>(null);
+    const lcRef = useRef<HTMLDivElement>(null);
+    const rcRef = useRef<HTMLDivElement>(null);
+
     const polygonManagerRef = useRef<PolygonManagerHandle | null>(null);
+    const [lcSize, setLcSize]           = useState({ w: 0, h: 0 });
     const [rcSize, setRcSize]           = useState({ w: 0, h: 0 });
     const [rcTransform, setRcTransform] = useState<Transform>({ x: 0, y: 0, scale: 1 });
     const [subset, setSubset] = useState("default");
@@ -57,6 +60,20 @@ export default function Viewer2dPCA_viewer() {
         // Fit, later, this should be handled by the scatter canvas itself
         // Not here
     })
+
+    useEffect(() => {
+        const lc = lcRef.current!;
+        const lcRo = new ResizeObserver(() => setLcSize({ w: lc.clientWidth, h: lc.clientHeight }));
+        lcRo.observe(lc);
+
+
+        const rc = rcRef.current!;
+        const rcRo = new ResizeObserver(() => setRcSize({ w: rc.clientWidth, h: rc.clientHeight }));
+        rcRo.observe(rc);
+
+        return () => rcRo.disconnect();
+    }, []);
+
 
     const onDividerMouseDown = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -81,7 +98,7 @@ export default function Viewer2dPCA_viewer() {
     return (
         
         <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100vh", position: "relative" }}>
-            <div ref={containerRef} style={{ position: "relative", flex: "1 1 auto", background: "#111" }}>
+            <div ref={lcRef} style={{ position: "relative", flex: "1 1 auto", background: "#111" }}>
 
 
             </div>
@@ -94,7 +111,10 @@ export default function Viewer2dPCA_viewer() {
                 onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.22)")}
                 onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
             />
-            <div style={{ flex: `0 0 ${rightWidth}px`, background: "#222", color: "#fff", padding: 16, position: 'relative'}}>
+            <div
+                ref={rcRef}
+                style={{ flex: `0 0 ${rightWidth}px`, background: "#222", color: "#fff", padding: 16, position: 'relative'}}
+            >
                 <ScatterCanvas
                     key={subset}
                     data={pointsData}
