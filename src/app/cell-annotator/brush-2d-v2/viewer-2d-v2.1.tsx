@@ -5,6 +5,7 @@ import { OverlyingCanvasV2 } from "./overlying-canvas-v2";
 import PolygonManagerCanvas, { PolygonManagerHandle } from "./polygon-manager-canvas";
 import { ScatterCanvas } from "./scatter-canvas";
 import { ColorEncoder, Transform } from "../underlying-canvas";
+// import SubsetSelectorV2_1 from "./subset-selector-v2.1";
 
 interface _CellData {
     id: string;
@@ -39,8 +40,8 @@ export default function Viewer2dPCA_viewer() {
     const polygonManagerRef = useRef<PolygonManagerHandle | null>(null);
     const [lcSize, setLcSize]           = useState({ w: 0, h: 0 });
     const [rcSize, setRcSize]           = useState({ w: 0, h: 0 });
+    const [lcTransform, setLcTransform] = useState<Transform>({ x: 0, y: 0, scale: 1 });
     const [rcTransform, setRcTransform] = useState<Transform>({ x: 0, y: 0, scale: 1 });
-    const [subset, setSubset] = useState("default");
 
     const [rightWidth, setRightWidth] = useState(500);
     const [polygons, setPolygons] = useState<{ verts: { x: number; y: number }[] }[]>([]);
@@ -49,17 +50,28 @@ export default function Viewer2dPCA_viewer() {
     // Newly introduced int he v2.1
     const [pointsData, setPointsData] = useState<_CellData[]>([]);
 
+    const [patients, setPatients] = useState<string[]>([]);
+
+    // Left container
+    const [lcSubset, setLcSubset] = useState<string | null>(null);
+    const [pointsDataSubset, setPointsDataSubset] = useState<_CellData[]>([]);
+
+
     useEffect(() => {
         loadAllPatientsCsv().then(data => {
             setPointsData(data);
             // setLoadedSubset("all"); 
+            /*let patients = Array.from(new Set(data.map(d => d.SampleId)));
+            setPatients(patients);
+            setLcSubset(patients[0]);*/
         });
     }, []);
 
-    useEffect(() => {
-        // Fit, later, this should be handled by the scatter canvas itself
-        // Not here
-    })
+    /*useEffect(() => {
+        if (lcSubset) {
+            setPointsDataSubset(pointsData.filter(d => d.SampleId === lcSubset));
+        }
+    }, [lcSubset, pointsData]);*/
 
     useEffect(() => {
         const lc = lcRef.current!;
@@ -99,8 +111,32 @@ export default function Viewer2dPCA_viewer() {
         
         <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100vh", position: "relative" }}>
             <div ref={lcRef} style={{ position: "relative", flex: "1 1 auto", background: "#111" }}>
-
-
+                
+                {/* 
+                <ScatterCanvas
+                    key={lcSubset}
+                    data={pointsDataSubset}
+                    xAccessor={d => d.x}
+                    yAccessor={d => d.y}
+                    colorEncoder={byClusterEncoder}
+                    size={lcSize}
+                    transform={ lcTransform }
+                    setTransform={setLcTransform}
+                    onReady={() => {}}
+                ></ScatterCanvas>
+                <OverlyingCanvasV2
+                    size={lcSize}
+                    mode="pan"
+                    transform={lcTransform}
+                    onTransform={setLcTransform}
+                    onBrush={() => {}}
+                ></OverlyingCanvasV2>
+                <SubsetSelectorV2_1
+                    subsets={patients}
+                    subset={lcSubset}
+                    onSubsetChange={setLcSubset}
+                ></SubsetSelectorV2_1>
+                */}
             </div>
             <div
                 onMouseDown={onDividerMouseDown}
@@ -116,13 +152,14 @@ export default function Viewer2dPCA_viewer() {
                 style={{ flex: `0 0 ${rightWidth}px`, background: "#222", color: "#fff", padding: 16, position: 'relative'}}
             >
                 <ScatterCanvas
-                    key={subset}
+                    key="default"
                     data={pointsData}
                     xAccessor={d => d.umap_1}
                     yAccessor={d => d.umap_2}
                     colorEncoder={byClusterEncoder}
                     size={rcSize}
                     transform={rcTransform}
+                    setTransform={setRcTransform}
                     onReady={() => {}}
                 ></ScatterCanvas>
                 <PolygonManagerCanvas
@@ -130,7 +167,7 @@ export default function Viewer2dPCA_viewer() {
                     size={rcSize}
                     transform={rcTransform}
                     onTransform={setRcTransform}
-                    subset={subset}
+                    subset="default"
                     onPolygonsChange={setPolygons}
                 ></PolygonManagerCanvas>
                 <OverlyingCanvasV2
@@ -139,7 +176,6 @@ export default function Viewer2dPCA_viewer() {
                     transform={rcTransform}
                     onTransform={setRcTransform}
                     onBrush={() => {}}
-                    
                 ></OverlyingCanvasV2>
             </div>
         </div>

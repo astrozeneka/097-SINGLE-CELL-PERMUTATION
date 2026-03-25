@@ -9,12 +9,26 @@ interface ScatterCanvasProps<T> {
     yAccessor: (d: T) => number;
     colorEncoder: ColorEncoder<T>;
     transform: Transform;
+    setTransform?: (t: Transform) => void;
     size: { w: number; h: number };
     // Per-point float key uploaded to GPU. 0 = no polygon.
     polygonMask?: Float32Array | null;
     // CPU-side lookup: float key → set of polygons owning that key.
     polygonMap?: Map<number, Set<Polygon>>;
     onReady?: () => void;
+}
+
+function fitTransform<T>(data: T[], xAccessor: (d: T) => number, yAccessor: (d: T) => number, w: number, h: number): Transform {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const d of data) {
+        const x = xAccessor(d), y = yAccessor(d);
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+    }
+    const dataW = maxX - minX, dataH = maxY - minY;
+    const scale = dataW / dataH > w / h ? w / dataW : h / dataH;
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    return { x: w / 2 - cx * scale, y: h / 2 + cy * scale, scale };
 }
 
 function glslType(size: 1 | 2 | 3 | 4) { return size === 1 ? "float" : `vec${size}`; }
@@ -82,7 +96,7 @@ type GlState = {
     polygonBuffer: WebGLBuffer;
 };
 
-export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, transform, size, polygonMask, polygonMap, onReady }: ScatterCanvasProps<T>) {
+export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, transform, setTransform, size, polygonMask, polygonMap, onReady }: ScatterCanvasProps<T>) {
     const canvasRef      = useRef<HTMLCanvasElement>(null);
     const glRef          = useRef<GlState | null>(null);
     const polyMaskRef    = useRef(polygonMask);
@@ -90,6 +104,9 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
     const onReadyRef     = useRef(onReady);
     onReadyRef.current   = onReady;
     const readyCalledRef = useRef(false);
+    const fittedDataRef     = useRef<T[] | null>(null);
+    const setTransformRef   = useRef(setTransform);
+    setTransformRef.current = setTransform;
 
     useEffect(() => {
         console.log("data", data);
@@ -169,6 +186,11 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
         const state = glRef.current;
         console.log(state, size)
         if (!state || size.w === 0 || size.h === 0 || state.count === 0) return;
+        if (setTransformRef.current && fittedDataRef.current !== data) {
+            fittedDataRef.current = data;
+            setTransformRef.current(fitTransform(data, xAccessor, yAccessor, size.w, size.h));
+            return;
+        }
         console.log("all", size, transform, data);
         const { gl, count, pixelScaleLoc, pixelOffsetLoc, sizeLoc } = state;
         const canvas = canvasRef.current!;
