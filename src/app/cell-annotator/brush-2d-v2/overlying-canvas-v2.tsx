@@ -29,6 +29,7 @@ export function OverlyingCanvasV2({ size, mode, transform, onTransform, onBrush,
     onTransformRef.current = onTransform;
 
     useEffect(() => {
+        console.log("WHEEL init")
         const canvas = ref.current!;
         const onWheel = (e: WheelEvent) => {
             e.preventDefault();
@@ -57,7 +58,7 @@ export function OverlyingCanvasV2({ size, mode, transform, onTransform, onBrush,
             ref={ref}
             width={size.w}
             height={size.h}
-            style={{ position: "absolute", inset: 0, cursor: mode === "brush" ? "none" : mode === "pan" ? "grab" : "crosshair" }}
+            style={{ position: "absolute", inset: 0, cursor: mode === "brush" ? "none" : mode === "pan" ? "grab" : "crosshair", width: "100%", height: "100%" }}
             onPointerDown={e => {
                 if (e.button === 2) {
                     isPanning.current = true;

@@ -92,6 +92,8 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
     const readyCalledRef = useRef(false);
 
     useEffect(() => {
+        console.log("data", data);
+
         readyCalledRef.current = false;
         const gl = canvasRef.current!.getContext("webgl")!;
         gl.clearColor(0, 0, 0, 1);
