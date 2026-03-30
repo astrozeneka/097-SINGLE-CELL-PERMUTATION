@@ -6,26 +6,9 @@ import PolygonManagerCanvas, { PolygonManagerHandle, pointInPolygon } from "./po
 import { ScatterCanvas } from "./scatter-canvas";
 import { ColorEncoder, Transform } from "../underlying-canvas";
 import SubsetSelectorV2_1 from "./subset-selector-v2.1";
+import CsvUploadDialogV2, { CellDataV2 } from "./csv-upload-dialog-v2";
 
-interface _CellData {
-    id: string;
-    x: number;
-    y: number;
-    umap_1: number;
-    umap_2: number;
-    cluster: number;
-    SampleId: string;
-}
-
-async function loadAllPatientsCsv(): Promise<_CellData[]> {
-    const res = await fetch(`/cell-annotator-data-v2/cell_coordinates_with_sample.csv`, { cache: "no-store" });
-    const text = await res.text();
-    return text.trim().split("\n").slice(1).map(line => {
-        const [id, x, y, umap_1, umap_2, cluster, SampleId] = line.split(",");
-        return { id, x: +x, y: +y, umap_1: +umap_1, umap_2: +umap_2, cluster: +cluster, SampleId };
-
-    });
-}
+type _CellData = CellDataV2;
 
 const byClusterEncoder: ColorEncoder<_CellData> = {
     attributes: [{ name: "a_cluster", size: 1, feed: d => d.cluster }],
@@ -66,15 +49,12 @@ export default function Viewer2dPCA_viewer() {
     const [pointsDataSubset, setPointsDataSubset] = useState<_CellData[]>([]);
 
 
-    useEffect(() => {
-        loadAllPatientsCsv().then(data => {
-            setPointsData(data);
-            // setLoadedSubset("all"); 
-            let patients = Array.from(new Set(data.map(d => d.SampleId)));
-            setPatients(patients);
-            setLcSubset(patients[0]);
-        });
-    }, []);
+    const handleLoad = (data: _CellData[]) => {
+        setPointsData(data);
+        const patients = Array.from(new Set(data.map(d => d.SampleId)));
+        setPatients(patients);
+        setLcSubset(patients[0]);
+    };
 
     useEffect(() => {
         if (lcSubset) {
@@ -127,6 +107,7 @@ export default function Viewer2dPCA_viewer() {
     return (
         
         <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100vh", position: "relative" }}>
+            {pointsData.length === 0 && <CsvUploadDialogV2 onLoad={handleLoad} />}
             <div ref={lcRef} style={{ position: "relative", flex: "1 1 auto", background: "#111" }}>
                 
                 
