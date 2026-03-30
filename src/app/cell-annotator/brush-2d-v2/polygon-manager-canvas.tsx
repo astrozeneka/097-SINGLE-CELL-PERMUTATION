@@ -7,6 +7,7 @@ export interface PolygonManagerHandle {
     setCursorPos: (x: number, y: number) => void;
     clearCursor: () => void;
     adjustBrushRadius: (delta: number) => void;
+    clearPolygons: () => void;
 }
 
 interface PolygonManagerCanvasProps {
@@ -167,8 +168,15 @@ export default function PolygonManagerCanvas({ size, transform, handleRef, subse
         redraw();
     }
 
+    function clearPolygons() {
+        polygonsBySubset.current.set(subsetRef.current, []);
+        activePolygonId.current = null;
+        onPolygonsChange?.([]);
+        redraw();
+    }
+
     useEffect(() => {
-        if (handleRef) handleRef.current = { onBrushClick, onBrushMove, setCursorPos, clearCursor, adjustBrushRadius };
+        if (handleRef) handleRef.current = { onBrushClick, onBrushMove, setCursorPos, clearCursor, adjustBrushRadius, clearPolygons };
         return () => { if (handleRef) handleRef.current = null; };
     });
 

@@ -199,6 +199,9 @@ export default function Viewer2dPCA_viewer() {
                     onCursorLeave={() => polygonManagerRef.current?.clearCursor()}
                     onBrushResize={delta => polygonManagerRef.current?.adjustBrushRadius(delta)}
                 ></OverlyingCanvasV2>
+                <div style={{ position: 'absolute', bottom: 16, left: 16, zIndex: 10, fontFamily: 'monospace', fontSize: 11 }}>
+                    <button onClick={() => polygonManagerRef.current?.clearPolygons()}>Clear selection</button>
+                </div>
             </div>
         </div>
     );
