@@ -7,6 +7,7 @@ import { ScatterCanvas } from "./scatter-canvas";
 import { ColorEncoder, Transform } from "../underlying-canvas";
 import SubsetSelectorV2_1 from "./subset-selector-v2.1";
 import CsvUploadDialogV2, { CellDataV2 } from "./csv-upload-dialog-v2";
+import ClusterSelector from "./cluster-selector";
 
 type _CellData = CellDataV2;
 
@@ -16,11 +17,11 @@ const byClusterEncoder: ColorEncoder<_CellData> = {
     colorGlsl: `return vec4(hue2rgb(a_cluster / 23.0), 1.0);`,
 };
 
-const byClusterSelectionEncoder: ColorEncoder<_CellData> = {
+export const byClusterSelectionEncoder: ColorEncoder<_CellData> = {
     attributes: [{ name: "a_cluster", size: 1, feed: d => d.cluster }],
     uniforms: [],
     colorGlsl: `
-        if (a_polygon == 0.0) return vec4(0.35, 0.35, 0.35, 1.0);
+        if (a_polygon >= 0.0) return vec4(0.35, 0.35, 0.35, 1.0);
         return vec4(hue2rgb(a_cluster / 23.0), 1.0);
     `,
 };
@@ -150,6 +151,10 @@ export default function Viewer2dPCA_viewer() {
                 ref={rcRef}
                 style={{ flex: `0 0 ${rightWidth}px`, background: "#222", color: "#fff", padding: 16, position: 'relative'}}
             >
+                <ClusterSelector
+                    data={pointsData}
+                    colorEncoder={byClusterEncoder}
+                ></ClusterSelector>
                 <ScatterCanvas
                     key="default"
                     data={pointsData}
