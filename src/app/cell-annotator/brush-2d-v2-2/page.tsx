@@ -5,6 +5,7 @@ import { ScatterCanvas } from "../brush-2d-v2/scatter-canvas";
 import CsvUploadDialogV2_1, { CellDataV2_1 } from "../brush-2d-v2/csv-upload-dialog-v2-1";
 import { ColorEncoder, Transform } from "../underlying-canvas";
 import SubsetSelectorV2_1 from "../brush-2d-v2/subset-selector-v2.1";
+import ClusterSelector from "../brush-2d-v2/cluster-selector";
 
 const colorEncoder: ColorEncoder<CellDataV2_1> = {
     attributes: [{ name: "a_cluster", size: 1, feed: d => d.clusterIdx }],
@@ -47,6 +48,10 @@ export default function Page() {
         <div style={{ width: "100vw", height: "100vh", position: "absolute", left: 0, top: 0 }}>
             {pointsData.length === 0 && <CsvUploadDialogV2_1 onLoad={handleLoad} />}
             <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
+                <ClusterSelector
+                    data={pointsData}
+                    colorEncoder={colorEncoder}
+                ></ClusterSelector>
                 <ScatterCanvas
                     key={lcSubset}
                     data={pointsDataSubset}
