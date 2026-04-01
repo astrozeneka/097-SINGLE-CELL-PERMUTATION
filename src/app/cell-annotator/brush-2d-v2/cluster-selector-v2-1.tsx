@@ -112,13 +112,28 @@ export default function ClusterSelectorV2_1({ data, colorEncoder, onMaskChange }
     const toggle = (name: string) =>
         setHidden(prev => { const s = new Set(prev); s.has(name) ? s.delete(name) : s.add(name); return s; });
 
+    const selectAllState = hidden.size === 0 ? "checked" : hidden.size === clusters.length ? "unchecked" : "partial";
+    const toggleAll = () => setHidden(selectAllState === "checked" ? new Set(clusters.map(c => c.name)) : new Set());
+
     return (
-        <div style={{
+        <div className="thin-scrollbar" style={{
             position: "absolute", top: 8, right: 8, zIndex: 20,
             background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
             padding: "6px 8px", display: "flex", flexDirection: "column", gap: 2,
             maxHeight: "80%", overflowY: "auto", fontSize: 11, fontFamily: "monospace",
         }}>
+            <div onClick={toggleAll}
+                style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", paddingBottom: 4, marginBottom: 2, borderBottom: "1px solid rgba(255,255,255,0.15)" }}>
+                <div style={{
+                    width: 14, height: 14, flexShrink: 0, border: "1.5px solid #aaa", borderRadius: 2,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    background: selectAllState === "checked" ? "#aaa" : "transparent",
+                }}>
+                    {selectAllState === "partial" && <div style={{ width: 8, height: 2, background: "#aaa", borderRadius: 1 }} />}
+                    {selectAllState === "checked" && <svg width="10" height="8" viewBox="0 0 10 8"><polyline points="1,4 4,7 9,1" fill="none" stroke="#222" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                </div>
+                <span style={{ color: "#e2e8f0" }}>All</span>
+            </div>
             {clusters.map(({ name, idx }) => {
                 const isHidden = hidden.has(name);
                 return (
