@@ -7,6 +7,7 @@ import { ColorEncoder, Transform } from "../underlying-canvas";
 import SubsetSelectorV2_1 from "../brush-2d-v2/subset-selector-v2.1";
 import ClusterSelectorV2_1 from "../brush-2d-v2/cluster-selector-v2-1";
 import { OverlyingCanvasV2 } from "../brush-2d-v2/overlying-canvas-v2";
+import DotSizeSelector from "./dot-size-selector";
 
 const colorEncoder: ColorEncoder<CellDataV2_1> = {
     attributes: [{ name: "a_cluster", size: 1, feed: d => d.clusterIdx }],
@@ -29,6 +30,7 @@ export default function Page() {
     const [lcSubset, setLcSubset] = useState<string | null>(null);
     const [pointsDataSubset, setPointsDataSubset] = useState<_CellData[]>([]);
     const [clusterMask, setClusterMask] = useState<Float32Array | null>(null);
+    const [lcDotSize, setLcDotSize] = useState(2);
 
     const handleLoad = (data: CellDataV2_1[]) => {
         setPointsData(data);
@@ -68,6 +70,7 @@ export default function Page() {
                     setTransform={setLcTransform}
                     onReady={() => {}}
                     polygonMask={clusterMask}
+                    dotSize={lcDotSize}
                 />
                 <OverlyingCanvasV2
                     size={size}
@@ -81,6 +84,7 @@ export default function Page() {
                     subset={lcSubset}
                     onSubsetChange={setLcSubset}
                 ></SubsetSelectorV2_1>
+                <DotSizeSelector dotSize={lcDotSize} onDotSizeChange={setLcDotSize} />
             </div>
         </div>
     );

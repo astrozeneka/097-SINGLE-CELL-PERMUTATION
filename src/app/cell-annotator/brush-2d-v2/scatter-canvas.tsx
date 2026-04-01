@@ -15,6 +15,7 @@ interface ScatterCanvasProps<T> {
     polygonMask?: Float32Array | null;
     // CPU-side lookup: float key → set of polygons owning that key.
     polygonMap?: Map<number, Set<Polygon>>;
+    dotSize?: number;
     onReady?: () => void;
 }
 
@@ -46,6 +47,8 @@ attribute float a_polygon;
 uniform float u_pixelScale;
 uniform vec2 u_pixelOffset;
 uniform vec2 u_size;
+uniform float u_dotSize;
+uniform float u_baseScale;
 ${varyingDecls}
 varying float v_polygon;
 ${uniformDecls}
@@ -53,7 +56,7 @@ void main() {
     float sx = a_pos.x * u_pixelScale + u_pixelOffset.x;
     float sy = -a_pos.y * u_pixelScale + u_pixelOffset.y;
     gl_Position = vec4(2.0 * sx / u_size.x - 1.0, 1.0 - 2.0 * sy / u_size.y, 0.0, 1.0);
-    gl_PointSize = 2.0;
+    gl_PointSize = u_dotSize * (u_pixelScale / u_baseScale);
 ${assigns}
     v_polygon = a_polygon;
 }`;
@@ -93,10 +96,12 @@ type GlState = {
     pixelScaleLoc: WebGLUniformLocation;
     pixelOffsetLoc: WebGLUniformLocation;
     sizeLoc: WebGLUniformLocation;
+    dotSizeLoc: WebGLUniformLocation;
+    baseScaleLoc: WebGLUniformLocation;
     polygonBuffer: WebGLBuffer;
 };
 
-export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, transform, setTransform, size, polygonMask, polygonMap, onReady }: ScatterCanvasProps<T>) {
+export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, transform, setTransform, size, polygonMask, polygonMap, dotSize = 2, onReady }: ScatterCanvasProps<T>) {
     const canvasRef      = useRef<HTMLCanvasElement>(null);
     const glRef          = useRef<GlState | null>(null);
     const polyMaskRef    = useRef(polygonMask);
@@ -105,6 +110,7 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
     onReadyRef.current   = onReady;
     const readyCalledRef = useRef(false);
     const fittedDataRef     = useRef<T[] | null>(null);
+    const baseScaleRef      = useRef(1);
     const setTransformRef   = useRef(setTransform);
     setTransformRef.current = setTransform;
 
@@ -169,6 +175,8 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
             pixelScaleLoc:  gl.getUniformLocation(prog, "u_pixelScale")!,
             pixelOffsetLoc: gl.getUniformLocation(prog, "u_pixelOffset")!,
             sizeLoc:        gl.getUniformLocation(prog, "u_size")!,
+            dotSizeLoc:     gl.getUniformLocation(prog, "u_dotSize")!,
+            baseScaleLoc:   gl.getUniformLocation(prog, "u_baseScale")!,
             polygonBuffer,
         };
     }, [data, colorEncoder]);
@@ -186,10 +194,12 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
         if (!state || size.w === 0 || size.h === 0 || state.count === 0) return;
         if (setTransformRef.current && fittedDataRef.current !== data) {
             fittedDataRef.current = data;
-            setTransformRef.current(fitTransform(data, xAccessor, yAccessor, size.w, size.h));
+            const fitted = fitTransform(data, xAccessor, yAccessor, size.w, size.h);
+            baseScaleRef.current = fitted.scale;
+            setTransformRef.current(fitted);
             return;
         }
-        const { gl, count, pixelScaleLoc, pixelOffsetLoc, sizeLoc } = state;
+        const { gl, count, pixelScaleLoc, pixelOffsetLoc, sizeLoc, dotSizeLoc, baseScaleLoc } = state;
         const canvas = canvasRef.current!;
 
         if (canvas.width !== size.w || canvas.height !== size.h) {
@@ -201,6 +211,8 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
         gl.uniform1f(pixelScaleLoc, transform.scale);
         gl.uniform2f(pixelOffsetLoc, transform.x, transform.y);
         gl.uniform2f(sizeLoc, size.w, size.h);
+        gl.uniform1f(dotSizeLoc, dotSize);
+        gl.uniform1f(baseScaleLoc, baseScaleRef.current);
 
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.drawArrays(gl.POINTS, 0, count);
@@ -208,7 +220,7 @@ export function ScatterCanvas<T>({ data, xAccessor, yAccessor, colorEncoder, tra
             readyCalledRef.current = true;
             onReadyRef.current?.();
         }
-    }, [size, transform, polygonMask, colorEncoder, data]);
+    }, [size, transform, polygonMask, colorEncoder, data, dotSize]);
 
     return <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />;
 }
