@@ -7,6 +7,7 @@ export interface CellDataV2_1 {
     y: number;
     umap_1: number;
     umap_2: number;
+    umap_3?: number;
     cluster: string;
     clusterIdx: number;
     SampleId: string;
@@ -23,6 +24,7 @@ export default function CsvUploadDialogV2_1({ onLoad }: Props) {
     const [yCol, setYCol] = useState("");
     const [umap1Col, setUmap1Col] = useState("");
     const [umap2Col, setUmap2Col] = useState("");
+    const [umap3Col, setUmap3Col] = useState("");
     const [clusterCol, setClusterCol] = useState("");
     const [sampleIdCol, setSampleIdCol] = useState("");
     const [idCol, setIdCol] = useState("");
@@ -35,16 +37,17 @@ export default function CsvUploadDialogV2_1({ onLoad }: Props) {
         const dataLines = lines.slice(1).filter(Boolean);
         setRawLines(dataLines);
         setHeaders(lines[0].split(","));
-        setXCol(""); setYCol(""); setUmap1Col(""); setUmap2Col(""); setClusterCol(""); setSampleIdCol(""); setIdCol("");
+        setXCol(""); setYCol(""); setUmap1Col(""); setUmap2Col(""); setUmap3Col(""); setClusterCol(""); setSampleIdCol(""); setIdCol("");
     };
 
-    const canLoad = headers.length > 0 && xCol && yCol && umap1Col && umap2Col && clusterCol && sampleIdCol;
+    const canLoad = headers.length > 0 && xCol && yCol && umap1Col && umap2Col && umap3Col && clusterCol && sampleIdCol;
 
     const handleLoad = () => {
         const xIdx = headers.indexOf(xCol);
         const yIdx = headers.indexOf(yCol);
         const u1Idx = headers.indexOf(umap1Col);
         const u2Idx = headers.indexOf(umap2Col);
+        const u3Idx = headers.indexOf(umap3Col);
         const cIdx = headers.indexOf(clusterCol);
         const sIdx = headers.indexOf(sampleIdCol);
         const idIdx = idCol ? headers.indexOf(idCol) : -1;
@@ -61,6 +64,7 @@ export default function CsvUploadDialogV2_1({ onLoad }: Props) {
                 y: +cols[yIdx],
                 umap_1: +cols[u1Idx],
                 umap_2: +cols[u2Idx],
+                umap_3: u3Idx >= 0 ? +cols[u3Idx] : undefined,
                 cluster,
                 clusterIdx: clusterMap.get(cluster)!,
                 SampleId: cols[sIdx],
@@ -98,6 +102,7 @@ export default function CsvUploadDialogV2_1({ onLoad }: Props) {
                         {colSelect(yCol, setYCol, "Y Column")}
                         {colSelect(umap1Col, setUmap1Col, "UMAP 1")}
                         {colSelect(umap2Col, setUmap2Col, "UMAP 2")}
+                        {colSelect(umap3Col, setUmap3Col, "UMAP 3")}
                         {colSelect(clusterCol, setClusterCol, "Cluster Column")}
                         {colSelect(sampleIdCol, setSampleIdCol, "Sample ID Column")}
                         {colSelect(idCol, setIdCol, "ID Column (optional)")}

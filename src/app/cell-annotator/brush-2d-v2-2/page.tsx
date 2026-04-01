@@ -8,6 +8,8 @@ import SubsetSelectorV2_1 from "../brush-2d-v2/subset-selector-v2.1";
 import ClusterSelectorV2_1 from "../brush-2d-v2/cluster-selector-v2-1";
 import { OverlyingCanvasV2 } from "../brush-2d-v2/overlying-canvas-v2";
 import DotSizeSelector from "./dot-size-selector";
+import HorizontalSplit from "../horizontal-split";
+import { Scatter3DV2 } from "./scatter-3d-v2";
 
 const colorEncoder: ColorEncoder<CellDataV2_1> = {
     attributes: [{ name: "a_cluster", size: 1, feed: d => d.clusterIdx }],
@@ -21,8 +23,8 @@ const colorEncoder: ColorEncoder<CellDataV2_1> = {
 type _CellData = CellDataV2_1;
 
 export default function Page() {
-    const containerRef = useRef<HTMLDivElement>(null);
-    const [size, setSize] = useState({ w: 0, h: 0 });
+    const lcRef = useRef<HTMLDivElement>(null);
+    const [lcSize, setLcSize] = useState({ w: 0, h: 0 });
     const [lcTransform, setLcTransform] = useState<Transform>({ x: 0, y: 0, scale: 1 });
     const [pointsData, setPointsData] = useState<CellDataV2_1[]>([]);
     const [groupList, setGroupList] = useState<string[]>([]); // patient groups for subset selector
@@ -31,6 +33,11 @@ export default function Page() {
     const [pointsDataSubset, setPointsDataSubset] = useState<_CellData[]>([]);
     const [clusterMask, setClusterMask] = useState<Float32Array | null>(null);
     const [lcDotSize, setLcDotSize] = useState(2);
+
+
+    const rcRef = useRef<HTMLDivElement>(null);
+    const [rcTransform, setRcTransform] = useState<Transform>({ x: 0, y: 0, scale: 1 });
+    const [rcSize, setRcSize] = useState({ w: 0, h: 0 });
 
     const handleLoad = (data: CellDataV2_1[]) => {
         setPointsData(data);
@@ -44,48 +51,68 @@ export default function Page() {
     }, [lcSubset, pointsData]);
 
     useEffect(() => {
-        const el = containerRef.current!;
-        const ro = new ResizeObserver(() => setSize({ w: el.clientWidth, h: el.clientHeight }));
+        const el = lcRef.current!;
+        const ro = new ResizeObserver(() => setLcSize({ w: el.clientWidth, h: el.clientHeight }));
         ro.observe(el);
+
+        const rEl = rcRef.current!;
+        const rRo = new ResizeObserver(() => setRcSize({ w: rEl.clientWidth, h: rEl.clientHeight }));
+        rRo.observe(rEl);
         return () => ro.disconnect();
     }, []);
+
 
     return (
         <div style={{ width: "100vw", height: "100vh", position: "absolute", left: 0, top: 0 }}>
             {pointsData.length === 0 && <CsvUploadDialogV2_1 onLoad={handleLoad} />}
-            <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
-                <ClusterSelectorV2_1
-                    data={pointsDataSubset}
-                    colorEncoder={colorEncoder}
-                    onMaskChange={setClusterMask}
-                />
-                <ScatterCanvas
-                    key={lcSubset}
-                    data={pointsDataSubset}
-                    xAccessor={d => d.x}
-                    yAccessor={d => d.y}
-                    colorEncoder={colorEncoder}
-                    size={size}
-                    transform={lcTransform}
-                    setTransform={setLcTransform}
-                    onReady={() => {}}
-                    polygonMask={clusterMask}
-                    dotSize={lcDotSize}
-                />
-                <OverlyingCanvasV2
-                    size={size}
-                    mode="pan"
-                    transform={lcTransform}
-                    onTransform={setLcTransform}
-                    onBrush={() => {}}
-                ></OverlyingCanvasV2>
-                <SubsetSelectorV2_1
-                    subsets={groupList}
-                    subset={lcSubset}
-                    onSubsetChange={setLcSubset}
-                ></SubsetSelectorV2_1>
-                <DotSizeSelector dotSize={lcDotSize} onDotSizeChange={setLcDotSize} />
-            </div>
+            <HorizontalSplit>
+                <div ref={lcRef} style={{ height: "100%" }}>
+                    <ClusterSelectorV2_1
+                        data={pointsDataSubset}
+                        colorEncoder={colorEncoder}
+                        onMaskChange={setClusterMask}
+                    />
+                    <ScatterCanvas
+                        key={lcSubset}
+                        data={pointsDataSubset}
+                        xAccessor={d => d.x}
+                        yAccessor={d => d.y}
+                        colorEncoder={colorEncoder}
+                        size={lcSize}
+                        transform={lcTransform}
+                        setTransform={setLcTransform}
+                        onReady={() => {}}
+                        polygonMask={clusterMask}
+                        dotSize={lcDotSize}
+                    />
+                    <OverlyingCanvasV2
+                        size={lcSize}
+                        mode="pan"
+                        transform={lcTransform}
+                        onTransform={setLcTransform}
+                        onBrush={() => {}}
+                    ></OverlyingCanvasV2>
+                    <SubsetSelectorV2_1
+                        subsets={groupList}
+                        subset={lcSubset}
+                        onSubsetChange={setLcSubset}
+                    ></SubsetSelectorV2_1>
+                    <DotSizeSelector dotSize={lcDotSize} onDotSizeChange={setLcDotSize} />
+                </div>
+                <div ref={rcRef} style={{ height: "100%" }}>
+                    <Scatter3DV2
+                        data={pointsDataSubset}
+                        xAccessor={d => d.umap_1}
+                        yAccessor={d => d.umap_2}
+                        zAccessor={d => d.umap_3 ?? 0}
+                        colorEncoder={colorEncoder}
+                        size={rcSize}
+                        transform={rcTransform}
+                        setTransform={setRcTransform}
+                        onReady={() => {}}
+                    ></Scatter3DV2>
+                </div>
+            </HorizontalSplit>
         </div>
     );
 }
