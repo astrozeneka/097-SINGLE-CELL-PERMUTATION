@@ -27,6 +27,22 @@ function rotateX(t: number): Float32Array {
     return new Float32Array([1, 0, 0, 0,  0, c, s, 0,  0, -s, c, 0,  0, 0, 0, 1]);
 }
 
+function perspectiveMat(fov: number, aspect: number, near: number, far: number): Float32Array {
+    const f = 1 / Math.tan(fov / 2);
+    const nf = 1 / (near - far);
+    return new Float32Array([
+        f / aspect, 0, 0,                    0,
+        0,          f, 0,                    0,
+        0,          0, (far + near) * nf,   -1,
+        0,          0, 2 * far * near * nf,  0,
+    ]);
+}
+
+// Camera at (0, 0, cameraZ) looking at origin along -Z
+function viewMat(cameraZ: number): Float32Array {
+    return new Float32Array([1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, -cameraZ, 1]);
+}
+
 const IDENTITY = new Float32Array([1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1]);
 const STEP = Math.PI / 36; // 5° per keypress
 
@@ -37,16 +53,16 @@ uniform mat4 u_matrix;
 varying float v_depth;
 void main() {
     vec4 p = u_matrix * vec4(a_pos, 1.0);
-    gl_Position = vec4(p.xy, p.z * 0.5, 1.0);
+    gl_Position = p;
     gl_PointSize = 6.0;
-    v_depth = p.z;
+    v_depth = p.w;
 }`;
 
 const FS = `
 precision mediump float;
 varying float v_depth;
 void main() {
-    float b = clamp(0.5 + v_depth * 0.5, 0.1, 1.0);
+    float b = clamp(2.5 / v_depth, 0.2, 1.0);
     gl_FragColor = vec4(b, b * 0.5, 1.0, 1.0);
 }`;
 
@@ -146,9 +162,10 @@ export default function Viewer3D() {
         return () => window.removeEventListener("keydown", onKey);
     }, []);
 
-    const aspect    = size.w > 0 ? size.w / size.h : 1;
-    const aspectMat = new Float32Array([1 / aspect, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1]);
-    const matrix    = mat4mul(aspectMat, rotation);
+    const aspect = size.w > 0 ? size.w / size.h : 1;
+    const P      = perspectiveMat(60 * Math.PI / 180, aspect, 0.1, 100.0);
+    const V      = viewMat(3.0);
+    const matrix = mat4mul(P, mat4mul(V, rotation));
 
     return (
         <div ref={containerRef} style={{ display: "flex", flexDirection: "row", width: "100%", height: "100vh", position: "relative" }}>

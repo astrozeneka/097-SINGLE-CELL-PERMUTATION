@@ -5,12 +5,16 @@ import { ScatterCanvas } from "../brush-2d-v2/scatter-canvas";
 import CsvUploadDialogV2_1, { CellDataV2_1 } from "../brush-2d-v2/csv-upload-dialog-v2-1";
 import { ColorEncoder, Transform } from "../underlying-canvas";
 import SubsetSelectorV2_1 from "../brush-2d-v2/subset-selector-v2.1";
-import ClusterSelector from "../brush-2d-v2/cluster-selector";
+import ClusterSelectorV2_1 from "../brush-2d-v2/cluster-selector-v2-1";
+import { OverlyingCanvasV2 } from "../brush-2d-v2/overlying-canvas-v2";
 
 const colorEncoder: ColorEncoder<CellDataV2_1> = {
     attributes: [{ name: "a_cluster", size: 1, feed: d => d.clusterIdx }],
     uniforms: [],
-    colorGlsl: `return vec4(hue2rgb(a_cluster / 23.0), 1.0);`,
+    colorGlsl: `
+        if (a_polygon == 0.0) return vec4(0.35, 0.35, 0.35, 1.0);
+        return vec4(hue2rgb(a_cluster / 15.0), 1.0);
+    `,
 };
 
 type _CellData = CellDataV2_1;
@@ -24,9 +28,9 @@ export default function Page() {
 
     const [lcSubset, setLcSubset] = useState<string | null>(null);
     const [pointsDataSubset, setPointsDataSubset] = useState<_CellData[]>([]);
+    const [clusterMask, setClusterMask] = useState<Float32Array | null>(null);
 
     const handleLoad = (data: CellDataV2_1[]) => {
-        console.log("===data", data);
         setPointsData(data);
         const patients = Array.from(new Set(data.map(d => d.SampleId)));
         setGroupList(patients);
@@ -48,10 +52,11 @@ export default function Page() {
         <div style={{ width: "100vw", height: "100vh", position: "absolute", left: 0, top: 0 }}>
             {pointsData.length === 0 && <CsvUploadDialogV2_1 onLoad={handleLoad} />}
             <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
-                <ClusterSelector
-                    data={pointsData}
+                <ClusterSelectorV2_1
+                    data={pointsDataSubset}
                     colorEncoder={colorEncoder}
-                ></ClusterSelector>
+                    onMaskChange={setClusterMask}
+                />
                 <ScatterCanvas
                     key={lcSubset}
                     data={pointsDataSubset}
@@ -62,7 +67,15 @@ export default function Page() {
                     transform={lcTransform}
                     setTransform={setLcTransform}
                     onReady={() => {}}
+                    polygonMask={clusterMask}
                 />
+                <OverlyingCanvasV2
+                    size={size}
+                    mode="pan"
+                    transform={lcTransform}
+                    onTransform={setLcTransform}
+                    onBrush={() => {}}
+                ></OverlyingCanvasV2>
                 <SubsetSelectorV2_1
                     subsets={groupList}
                     subset={lcSubset}
