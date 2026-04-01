@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 
 
 // --- sample data (25-point helix) ---
-const DATA = Array.from({ length: 25 }, (_, i) => {
+export const DATA = Array.from({ length: 25 }, (_, i) => {
     const t = (i / 24) * Math.PI * 4;
     return { x: Math.cos(t), y: (i / 24) * 2 - 1, z: Math.sin(t) };
 });
