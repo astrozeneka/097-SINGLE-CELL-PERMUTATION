@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ScatterCanvas } from "../brush-2d-v2/scatter-canvas";
 import CsvUploadDialogV2_1, { CellDataV2_1 } from "../brush-2d-v2/csv-upload-dialog-v2-1";
 import { ColorEncoder, Transform } from "../underlying-canvas";
@@ -8,6 +8,7 @@ import { mat4mul, perspectiveMat, viewMat } from "../brush-3d/scatter-3d";
 import SubsetSelectorV2_1 from "../brush-2d-v2/subset-selector-v2.1";
 import ClusterSelectorV2_1 from "../brush-2d-v2/cluster-selector-v2-1";
 import { OverlyingCanvasV2 } from "../brush-2d-v2/overlying-canvas-v2";
+import { OverlyingCanvasV3 } from "../brush-2d-v2/overlying-canvas-v3";
 import DotSizeSelector from "./dot-size-selector";
 import HorizontalSplit from "../horizontal-split";
 import { Scatter3DV2 } from "./scatter-3d-v2";
@@ -42,6 +43,22 @@ export default function Page() {
 
     const rcAspect = rcSize.w > 0 ? rcSize.w / rcSize.h : 1;
     const rcFullMatrix = mat4mul(perspectiveMat(60 * Math.PI / 180, rcAspect, 0.1, 100.0), mat4mul(viewMat(3.0), rcMatrix));
+
+    // Mirror the normalization done inside Scatter3DV2 so OverlyingCanvasV3 works in the same space.
+    const rcNormalizedPoints = useMemo(() => {
+        let minX = Infinity, maxX = -Infinity;
+        let minY = Infinity, maxY = -Infinity;
+        let minZ = Infinity, maxZ = -Infinity;
+        for (const d of pointsDataSubset) {
+            if (d.umap_1 < minX) minX = d.umap_1; if (d.umap_1 > maxX) maxX = d.umap_1;
+            if (d.umap_2 < minY) minY = d.umap_2; if (d.umap_2 > maxY) maxY = d.umap_2;
+            const z = d.umap_3 ?? 0;
+            if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+        }
+        const span = Math.max(maxX - minX, maxY - minY, maxZ - minZ) / 1.6 || 1;
+        const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2, cz = (minZ + maxZ) / 2;
+        return pointsDataSubset.map(d => ({ x: (d.umap_1 - cx) / span, y: (d.umap_2 - cy) / span, z: ((d.umap_3 ?? 0) - cz) / span }));
+    }, [pointsDataSubset]);
 
     const handleLoad = (data: CellDataV2_1[]) => {
         setPointsData(data);
@@ -138,13 +155,11 @@ export default function Page() {
                         matrix={rcFullMatrix}
                         onReady={() => {}}
                     ></Scatter3DV2>
-                    <OverlyingCanvasV2
+                    <OverlyingCanvasV3
                         size={rcSize}
-                        mode="brush"
-                        transform={{ x: 0, y: 0, scale: 1 }}
-                        onTransform={() => {}}
-                        onBrush={() => {}}
-                    ></OverlyingCanvasV2>
+                        matrix={rcFullMatrix}
+                        points={rcNormalizedPoints}
+                    />
                     <div style={{ position: "absolute", bottom: 16, right: 16, display: "flex", gap: 4, zIndex: 10, color: 'white' }}>
                         <button onClick={() => setRcMatrix(m => mat4mul(new Float32Array([1.2,0,0,0, 0,1.2,0,0, 0,0,1.2,0, 0,0,0,1]), m) as Float32Array<ArrayBuffer>)}>[+]</button>
                         <button onClick={() => setRcMatrix(m => mat4mul(new Float32Array([1/1.2,0,0,0, 0,1/1.2,0,0, 0,0,1/1.2,0, 0,0,0,1]), m) as Float32Array<ArrayBuffer>)}>[-]</button>
