@@ -106,6 +106,7 @@ export default function Page() {
                         yAccessor={d => d.umap_2}
                         zAccessor={d => d.umap_3 ?? 0}
                         colorEncoder={colorEncoder}
+                        polygonMask={clusterMask}
                         size={rcSize}
                         transform={rcTransform}
                         setTransform={setRcTransform}

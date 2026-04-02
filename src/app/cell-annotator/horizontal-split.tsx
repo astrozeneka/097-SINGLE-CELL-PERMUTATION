@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { Children, useRef, useState } from "react";
 
 interface HorizontalSplitProps {
@@ -40,7 +41,7 @@ export default function HorizontalSplit({
     return (
         <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100%" }}>
             {panels.map((panel, i) => (
-                <>
+                <React.Fragment key={i}>
                     {i > 0 && (
                         <div
                             key={`divider-${i}`}
@@ -59,7 +60,7 @@ export default function HorizontalSplit({
                     >
                         {panel}
                     </div>
-                </>
+                </React.Fragment>
             ))}
         </div>
     );
