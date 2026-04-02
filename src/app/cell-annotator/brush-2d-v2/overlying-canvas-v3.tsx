@@ -4,10 +4,11 @@ const BRUSH_RADIUS = 20;
 
 // Points must be in the same normalized space as the data passed to the WebGL scatter component.
 // matrix is the full MVP matrix (column-major, WebGL convention), same as passed to Scatter3DV2.
-export function OverlyingCanvasV3({ size, matrix, points }: {
+export function OverlyingCanvasV3({ size, matrix, points, onBrush }: {
     size: { w: number; h: number };
     matrix: Float32Array;
     points: { x: number; y: number; z: number }[];
+    onBrush: (indices: Set<number>) => void;
 }) {
     const canvasRef   = useRef<HTMLCanvasElement>(null);
     const isDown      = useRef(false);
@@ -19,6 +20,8 @@ export function OverlyingCanvasV3({ size, matrix, points }: {
     pointsRef.current = points;
     const sizeRef     = useRef(size);
     sizeRef.current   = size;
+    const onBrushRef  = useRef(onBrush);
+    onBrushRef.current = onBrush;
 
     function canvasPos(e: React.MouseEvent) {
         const r = canvasRef.current!.getBoundingClientRect();
@@ -36,14 +39,14 @@ export function OverlyingCanvasV3({ size, matrix, points }: {
         return { sx: (cx / cw + 1) / 2 * w, sy: (1 - cy / cw) / 2 * h };
     }
 
-    function selectWithin(bx: number, by: number): number[] {
+    function selectWithin(bx: number, by: number): Set<number> {
         const r2  = BRUSH_RADIUS * BRUSH_RADIUS;
         const pts = pointsRef.current;
-        const out: number[] = [];
+        const out = new Set<number>();
         for (let i = 0; i < pts.length; i++) {
             const { sx, sy } = toScreen(pts[i].x, pts[i].y, pts[i].z);
             const dx = bx - sx, dy = by - sy;
-            if (dx * dx + dy * dy < r2) out.push(i);
+            if (dx * dx + dy * dy < r2) out.add(i);
         }
         return out;
     }
@@ -71,7 +74,7 @@ export function OverlyingCanvasV3({ size, matrix, points }: {
         const now = Date.now();
         if (now - lastBrush.current < 16) return;
         lastBrush.current = now;
-        console.log("brush selected indices", selectWithin(x, y));
+        onBrushRef.current(selectWithin(x, y));
     }
 
     return (

@@ -22,6 +22,21 @@ const colorEncoder: ColorEncoder<CellDataV2_1> = {
     `,
 };
 
+const byClusterColorEncoder: ColorEncoder<CellDataV2_1> = {
+    attributes: [{ name: "a_cluster", size: 1, feed: d => d.clusterIdx }],
+    uniforms: [],
+    colorGlsl: `return vec4(hue2rgb(a_cluster / 15.0), 1.0);`,
+};
+
+const byClusterAndSelectionColorEncoder: ColorEncoder<CellDataV2_1> = {
+    attributes: [{ name: "a_cluster", size: 1, feed: d => d.clusterIdx }],
+    uniforms: [],
+    colorGlsl: `
+        if (a_polygon == 0.0) return vec4(0.35, 0.35, 0.35, 1.0);
+        return vec4(hue2rgb(a_cluster / 15.0), 1.0);
+    `,
+};
+
 type _CellData = CellDataV2_1;
 
 export default function Page() {
@@ -33,7 +48,7 @@ export default function Page() {
 
     const [lcSubset, setLcSubset] = useState<string | null>(null);
     const [pointsDataSubset, setPointsDataSubset] = useState<_CellData[]>([]);
-    const [clusterMask, setClusterMask] = useState<Float32Array | null>(null);
+    const [selectionMask, setSelectionMask] = useState<Float32Array | null>(null);
     const [lcDotSize, setLcDotSize] = useState(2);
 
 
@@ -114,19 +129,19 @@ export default function Page() {
                     <ClusterSelectorV2_1
                         data={pointsDataSubset}
                         colorEncoder={colorEncoder}
-                        onMaskChange={setClusterMask}
+                        onMaskChange={setSelectionMask}
                     />
                     <ScatterCanvas
                         key={lcSubset}
                         data={pointsDataSubset}
                         xAccessor={d => d.x}
                         yAccessor={d => d.y}
-                        colorEncoder={colorEncoder}
+                        colorEncoder={byClusterAndSelectionColorEncoder}
                         size={lcSize}
                         transform={lcTransform}
                         setTransform={setLcTransform}
                         onReady={() => {}}
-                        polygonMask={clusterMask}
+                        polygonMask={selectionMask}
                         dotSize={lcDotSize}
                     />
                     <OverlyingCanvasV2
@@ -149,8 +164,8 @@ export default function Page() {
                         xAccessor={d => d.umap_1}
                         yAccessor={d => d.umap_2}
                         zAccessor={d => d.umap_3 ?? 0}
-                        colorEncoder={colorEncoder}
-                        polygonMask={clusterMask}
+                        colorEncoder={byClusterAndSelectionColorEncoder}
+                        polygonMask={selectionMask}
                         size={rcSize}
                         matrix={rcFullMatrix}
                         onReady={() => {}}
@@ -159,6 +174,11 @@ export default function Page() {
                         size={rcSize}
                         matrix={rcFullMatrix}
                         points={rcNormalizedPoints}
+                        onBrush={indices => {
+                            const mask = new Float32Array(pointsDataSubset.length);
+                            indices.forEach(i => { mask[i] = 1.0; });
+                            setSelectionMask(mask);
+                        }}
                     />
                     <div style={{ position: "absolute", bottom: 16, right: 16, display: "flex", gap: 4, zIndex: 10, color: 'white' }}>
                         <button onClick={() => setRcMatrix(m => mat4mul(new Float32Array([1.2,0,0,0, 0,1.2,0,0, 0,0,1.2,0, 0,0,0,1]), m) as Float32Array<ArrayBuffer>)}>[+]</button>
