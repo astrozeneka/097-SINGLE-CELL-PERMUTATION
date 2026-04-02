@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { ColorEncoder, Transform } from "../underlying-canvas";
-import { compileShader, fitTransform, glslType, varyingName } from "./gl-utils";
+import { ColorEncoder } from "../underlying-canvas";
+import { compileShader, glslType, varyingName } from "./gl-utils";
 
 function buildVertShader(enc: ColorEncoder<any>): string {
     const attrDecls    = enc.attributes.map(a => `attribute ${glslType(a.size)} ${a.name};`).join("\n");
@@ -11,19 +11,14 @@ function buildVertShader(enc: ColorEncoder<any>): string {
 attribute vec3 a_pos;
 ${attrDecls}
 attribute float a_polygon;
-uniform float u_pixelScale;
-uniform vec2 u_pixelOffset;
-uniform vec2 u_size;
+uniform mat4 u_matrix;
 uniform float u_dotSize;
-uniform float u_baseScale;
 ${varyingDecls}
 varying float v_polygon;
 ${uniformDecls}
 void main() {
-    float sx = a_pos.x * u_pixelScale + u_pixelOffset.x;
-    float sy = -a_pos.y * u_pixelScale + u_pixelOffset.y;
-    gl_Position = vec4(2.0 * sx / u_size.x - 1.0, 1.0 - 2.0 * sy / u_size.y, 0.0, 1.0);
-    gl_PointSize = u_dotSize * (u_pixelScale / u_baseScale);
+    gl_Position = u_matrix * vec4(a_pos, 1.0);
+    gl_PointSize = u_dotSize;
 ${assigns}
     v_polygon = a_polygon;
 }`;
@@ -54,15 +49,12 @@ void main() { gl_FragColor = _color(); }`;
 type GlState = {
     gl: WebGLRenderingContext;
     count: number;
-    pixelScaleLoc: WebGLUniformLocation;
-    pixelOffsetLoc: WebGLUniformLocation;
-    sizeLoc: WebGLUniformLocation;
+    matrixLoc: WebGLUniformLocation;
     dotSizeLoc: WebGLUniformLocation;
-    baseScaleLoc: WebGLUniformLocation;
     polygonBuffer: WebGLBuffer;
 };
 
-export function Scatter3DV2<T>({ data, xAccessor, yAccessor, zAccessor, colorEncoder, size, polygonMask, transform, setTransform, dotSize = 2, onReady }: {
+export function Scatter3DV2<T>({ data, xAccessor, yAccessor, zAccessor, colorEncoder, size, polygonMask, matrix, dotSize = 2, onReady }: {
     data: T[];
     xAccessor: (d: T) => number;
     yAccessor: (d: T) => number;
@@ -70,8 +62,7 @@ export function Scatter3DV2<T>({ data, xAccessor, yAccessor, zAccessor, colorEnc
     colorEncoder: ColorEncoder<T>;
     size: { w: number; h: number };
     polygonMask: Float32Array | null;
-    transform: Transform;
-    setTransform: (transform: Transform) => void;
+    matrix: Float32Array;
     dotSize?: number;
     onReady: () => void;
 }) {
@@ -82,15 +73,12 @@ export function Scatter3DV2<T>({ data, xAccessor, yAccessor, zAccessor, colorEnc
     const onReadyRef     = useRef(onReady);
     onReadyRef.current   = onReady;
     const readyCalledRef = useRef(false);
-    const baseScaleRef      = useRef(1); // ???
-    const fittedDataRef     = useRef<T[] | null>(null);
-    const setTransformRef   = useRef(setTransform);
-    setTransformRef.current = setTransform;
 
     useEffect(() => {
         readyCalledRef.current = false;
         const gl = canvasRef.current!.getContext("webgl")!;
         gl.clearColor(0, 0, 0, 1);
+        gl.enable(gl.DEPTH_TEST);
 
         const prog = gl.createProgram()!;
         gl.attachShader(prog, compileShader(gl, gl.VERTEX_SHADER,   buildVertShader(colorEncoder)));
@@ -98,17 +86,26 @@ export function Scatter3DV2<T>({ data, xAccessor, yAccessor, zAccessor, colorEnc
         gl.linkProgram(prog);
         gl.useProgram(prog);
 
-        // floats per points ?? do it means x/y/z + color attributes?
+        // normalize data to [-0.8, 0.8] using uniform scale
+        let minX = Infinity, maxX = -Infinity;
+        let minY = Infinity, maxY = -Infinity;
+        let minZ = Infinity, maxZ = -Infinity;
+        for (const d of data) {
+            const x = xAccessor(d), y = yAccessor(d), z = zAccessor(d);
+            if (x < minX) minX = x; if (x > maxX) maxX = x;
+            if (y < minY) minY = y; if (y > maxY) maxY = y;
+            if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+        }
+        const span = Math.max(maxX - minX, maxY - minY, maxZ - minZ) / 1.6 || 1;
+        const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2, cz = (minZ + maxZ) / 2;
+
         const floatsPerPoint = 3 + colorEncoder.attributes.reduce((s, a) => s + a.size, 0);
         const buffer = new Float32Array(data.length * floatsPerPoint);
         for (let i = 0; i < data.length; i++) {
             let off = i * floatsPerPoint;
-            const x = xAccessor(data[i]);
-            const y = yAccessor(data[i]);
-            const z = zAccessor(data[i]);
-            buffer[off++] = x;
-            buffer[off++] = y;
-            buffer[off++] = z;
+            buffer[off++] = (xAccessor(data[i]) - cx) / span;
+            buffer[off++] = (yAccessor(data[i]) - cy) / span;
+            buffer[off++] = (zAccessor(data[i]) - cz) / span;
             for (const attr of colorEncoder.attributes) {
                 const v = attr.feed(data[i]);
                 if (typeof v === "number") buffer[off++] = v;
@@ -124,7 +121,7 @@ export function Scatter3DV2<T>({ data, xAccessor, yAccessor, zAccessor, colorEnc
         const posLoc = gl.getAttribLocation(prog, "a_pos");
         gl.enableVertexAttribArray(posLoc);
         gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, stride, 0);
-        let attrByteOffset = 3 * 4; // 3 floats for x/y/z
+        let attrByteOffset = 3 * 4;
         for (const attr of colorEncoder.attributes) {
             const loc = gl.getAttribLocation(prog, attr.name);
             gl.enableVertexAttribArray(loc);
@@ -147,29 +144,26 @@ export function Scatter3DV2<T>({ data, xAccessor, yAccessor, zAccessor, colorEnc
         gl.enableVertexAttribArray(polyLoc);
         gl.vertexAttribPointer(polyLoc, 1, gl.FLOAT, false, 0, 0);
 
-
         glRef.current = {
             gl, count: data.length,
-            pixelScaleLoc:  gl.getUniformLocation(prog, "u_pixelScale")!,
-            pixelOffsetLoc: gl.getUniformLocation(prog, "u_pixelOffset")!,
-            sizeLoc:        gl.getUniformLocation(prog, "u_size")!,
-            dotSizeLoc:     gl.getUniformLocation(prog, "u_dotSize")!,
-            baseScaleLoc:   gl.getUniformLocation(prog, "u_baseScale")!,
+            matrixLoc:  gl.getUniformLocation(prog, "u_matrix")!,
+            dotSizeLoc: gl.getUniformLocation(prog, "u_dotSize")!,
             polygonBuffer,
-        };  
+        };
     }, [data, colorEncoder]);
 
     useEffect(() => {
-        // WE ARE HERE
+        const state = glRef.current;
+        if (!state) return;
+        const { gl, polygonBuffer, count } = state;
+        gl.bindBuffer(gl.ARRAY_BUFFER, polygonBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, polygonMask ?? new Float32Array(count).fill(0), gl.DYNAMIC_DRAW);
+    }, [polygonMask]);
+
+    useEffect(() => {
         const state = glRef.current;
         if (!state || size.w === 0 || size.h === 0 || state.count === 0) return;
-        if (setTransformRef.current && fittedDataRef.current !== data) {
-            fittedDataRef.current = data;
-            const fitted = fitTransform(data, xAccessor, yAccessor, size.w, size.h);
-            baseScaleRef.current = fitted.scale;
-            setTransformRef.current(fitted);
-        }
-        const { gl, count, pixelScaleLoc, pixelOffsetLoc, sizeLoc, dotSizeLoc, baseScaleLoc } = state;
+        const { gl, count, matrixLoc, dotSizeLoc } = state;
         const canvas = canvasRef.current!;
 
         if (canvas.width !== size.w || canvas.height !== size.h) {
@@ -178,20 +172,17 @@ export function Scatter3DV2<T>({ data, xAccessor, yAccessor, zAccessor, colorEnc
             gl.viewport(0, 0, size.w, size.h);
         }
 
-        gl.uniform1f(pixelScaleLoc, transform.scale);
-        gl.uniform2f(pixelOffsetLoc, transform.x, transform.y);
-        gl.uniform2f(sizeLoc, size.w, size.h);
+        gl.uniformMatrix4fv(matrixLoc, false, matrix);
         gl.uniform1f(dotSizeLoc, dotSize);
-        gl.uniform1f(baseScaleLoc, baseScaleRef.current);
 
-        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.drawArrays(gl.POINTS, 0, count);
         if (!readyCalledRef.current) {
             readyCalledRef.current = true;
             onReadyRef.current?.();
         }
-    }, [size, transform, polygonMask, colorEncoder, data, dotSize]);
+    }, [size, matrix, polygonMask, colorEncoder, data, dotSize]);
 
-    
+
     return <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />;
 }

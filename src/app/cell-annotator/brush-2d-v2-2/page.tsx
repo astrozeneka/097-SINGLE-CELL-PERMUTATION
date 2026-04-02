@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ScatterCanvas } from "../brush-2d-v2/scatter-canvas";
 import CsvUploadDialogV2_1, { CellDataV2_1 } from "../brush-2d-v2/csv-upload-dialog-v2-1";
 import { ColorEncoder, Transform } from "../underlying-canvas";
+import { mat4mul, perspectiveMat, viewMat } from "../brush-3d/scatter-3d";
 import SubsetSelectorV2_1 from "../brush-2d-v2/subset-selector-v2.1";
 import ClusterSelectorV2_1 from "../brush-2d-v2/cluster-selector-v2-1";
 import { OverlyingCanvasV2 } from "../brush-2d-v2/overlying-canvas-v2";
@@ -36,8 +37,11 @@ export default function Page() {
 
 
     const rcRef = useRef<HTMLDivElement>(null);
-    const [rcTransform, setRcTransform] = useState<Transform>({ x: 0, y: 0, scale: 1 });
     const [rcSize, setRcSize] = useState({ w: 0, h: 0 });
+    const [rcMatrix, setRcMatrix] = useState(() => new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]));
+
+    const rcAspect = rcSize.w > 0 ? rcSize.w / rcSize.h : 1;
+    const rcFullMatrix = mat4mul(perspectiveMat(60 * Math.PI / 180, rcAspect, 0.1, 100.0), mat4mul(viewMat(3.0), rcMatrix));
 
     const handleLoad = (data: CellDataV2_1[]) => {
         setPointsData(data);
@@ -58,7 +62,30 @@ export default function Page() {
         const rEl = rcRef.current!;
         const rRo = new ResizeObserver(() => setRcSize({ w: rEl.clientWidth, h: rEl.clientHeight }));
         rRo.observe(rEl);
-        return () => ro.disconnect();
+        return () => {
+            ro.disconnect();
+            rRo.disconnect();
+        };
+    }, []);
+
+    // FOR DEBUGGIN PURPOSE ONLY
+    useEffect(() => {
+        fetch("/cell-annotator-data-v2/umap_clusters_3d.csv")
+            .then(r => r.text())
+            .then(text => {
+                const lines = text.split(/\r?\n/);
+                const headers = lines[0].split(",").map(h => h.replace(/"/g, ""));
+                const [xIdx, yIdx, u1Idx, u2Idx, u3Idx, cIdx, sIdx, idIdx] = ["x","y","umap_1","umap_2","umap_3","cluster","SampleId","cell"].map(n => headers.indexOf(n));
+                const clusterMap = new Map<string, number>();
+                const clusterOrder: string[] = [];
+                const data = lines.slice(1).filter(Boolean).map((line, i) => {
+                    const cols = line.split(",").map(c => c.replace(/"/g, ""));
+                    const cluster = cols[cIdx];
+                    if (!clusterMap.has(cluster)) { clusterMap.set(cluster, clusterOrder.length); clusterOrder.push(cluster); }
+                    return { id: idIdx >= 0 ? cols[idIdx] : String(i), x: +cols[xIdx], y: +cols[yIdx], umap_1: +cols[u1Idx], umap_2: +cols[u2Idx], umap_3: +cols[u3Idx], cluster, clusterIdx: clusterMap.get(cluster)!, SampleId: cols[sIdx] };
+                });
+                handleLoad(data);
+            });
     }, []);
 
 
@@ -108,10 +135,20 @@ export default function Page() {
                         colorEncoder={colorEncoder}
                         polygonMask={clusterMask}
                         size={rcSize}
-                        transform={rcTransform}
-                        setTransform={setRcTransform}
+                        matrix={rcFullMatrix}
                         onReady={() => {}}
                     ></Scatter3DV2>
+                    <OverlyingCanvasV2
+                        size={rcSize}
+                        mode="brush"
+                        transform={{ x: 0, y: 0, scale: 1 }}
+                        onTransform={() => {}}
+                        onBrush={() => {}}
+                    ></OverlyingCanvasV2>
+                    <div style={{ position: "absolute", bottom: 16, right: 16, display: "flex", gap: 4, zIndex: 10, color: 'white' }}>
+                        <button onClick={() => setRcMatrix(m => mat4mul(new Float32Array([1.2,0,0,0, 0,1.2,0,0, 0,0,1.2,0, 0,0,0,1]), m) as Float32Array<ArrayBuffer>)}>[+]</button>
+                        <button onClick={() => setRcMatrix(m => mat4mul(new Float32Array([1/1.2,0,0,0, 0,1/1.2,0,0, 0,0,1/1.2,0, 0,0,0,1]), m) as Float32Array<ArrayBuffer>)}>[-]</button>
+                    </div>
                 </div>
             </HorizontalSplit>
         </div>
