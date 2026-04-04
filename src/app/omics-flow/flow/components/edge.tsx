@@ -31,6 +31,11 @@ interface PathData {
         width: number;
         height: number;
     };
+    arrowPosition: {
+        x: number;
+        y: number;
+        angle: number;
+    };
 }
 
 function getConnectionPoints(node: Node, dimensions: NodeDimensions): Record<Side, ConnectionPoint> {
@@ -161,9 +166,12 @@ function createPathData(
 
     const path = `M ${srcCenter.x} ${srcCenter.y} L ${exit.x} ${exit.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${entry.x} ${entry.y} L ${dstCenter.x} ${dstCenter.y}`;
 
+    const angle = Math.atan2(dstCenterY - entryY, dstCenterX - entryX) * (180 / Math.PI);
+
     return {
         path,
-        svgBounds: { x: svgX, y: svgY, width: svgWidth, height: svgHeight }
+        svgBounds: { x: svgX, y: svgY, width: svgWidth, height: svgHeight },
+        arrowPosition: { x: entryX, y: entryY, angle }
     };
 }
 
@@ -182,7 +190,7 @@ export function Edge({
     const sourcePoints = getConnectionPoints(source, sourceDimensions);
     const destPoints = getConnectionPoints(destination, destinationDimensions);
     const route = findBestRoute(sourcePoints, destPoints);
-    const { path, svgBounds } = createPathData(
+    const { path, svgBounds, arrowPosition } = createPathData(
         source,
         destination,
         sourceDimensions,
@@ -192,38 +200,47 @@ export function Edge({
         endOffset
     );
 
+    const arrowSize = 10;
+
     return (
-        <svg
-            style={{
-                position: "absolute",
-                left: `${svgBounds.x}px`,
-                top: `${svgBounds.y}px`,
-                width: `${svgBounds.width}px`,
-                height: `${svgBounds.height}px`,
-                pointerEvents: "none",
-                overflow: "visible",
-                border: "1px solid pink"
-            }}
-        >
-            <defs>
-                <marker
-                    id={`arrowhead-${source.uid}-${destination.uid}`}
-                    markerWidth="10"
-                    markerHeight="10"
-                    refX="9"
-                    refY="3"
-                    orient="auto"
-                >
-                    <polygon points="0 0, 10 3, 0 6" fill="#999" />
-                </marker>
-            </defs>
-            <path
-                d={path}
-                stroke="#999"
-                strokeWidth="2"
-                fill="none"
-                markerEnd={`url(#arrowhead-${source.uid}-${destination.uid})`}
-            />
-        </svg>
+        <>
+            <svg
+                style={{
+                    position: "absolute",
+                    left: `${svgBounds.x}px`,
+                    top: `${svgBounds.y}px`,
+                    width: `${svgBounds.width}px`,
+                    height: `${svgBounds.height}px`,
+                    pointerEvents: "none",
+                    overflow: "visible",
+                    border: "1px solid pink"
+                }}
+            >
+                <path
+                    d={path}
+                    stroke="#999"
+                    strokeWidth="2"
+                    fill="none"
+                />
+            </svg>
+            <svg
+                style={{
+                    position: "absolute",
+                    left: `${arrowPosition.x}px`,
+                    top: `${arrowPosition.y}px`,
+                    width: `${arrowSize}px`,
+                    height: `${arrowSize}px`,
+                    pointerEvents: "none",
+                    overflow: "visible",
+                    transform: `translate(-${arrowSize / 2}px, -${arrowSize / 2}px) rotate(${arrowPosition.angle}deg)`,
+                    transformOrigin: `${arrowSize / 2}px ${arrowSize / 2}px`
+                }}
+            >
+                <polygon
+                    points={`0,${arrowSize / 2} ${arrowSize},0 ${arrowSize},${arrowSize}`}
+                    fill="#999"
+                />
+            </svg>
+        </>
     );
 }
