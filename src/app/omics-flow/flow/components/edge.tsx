@@ -166,12 +166,12 @@ function createPathData(
 
     const path = `M ${srcCenter.x} ${srcCenter.y} L ${exit.x} ${exit.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${entry.x} ${entry.y} L ${dstCenter.x} ${dstCenter.y}`;
 
-    const angle = Math.atan2(dstCenterY - entryY, dstCenterX - entryX) * (180 / Math.PI);
+    const angle = 180 + Math.atan2(dstCenterY - entryY, dstCenterX - entryX) * (180 / Math.PI);
 
     return {
         path,
         svgBounds: { x: svgX, y: svgY, width: svgWidth, height: svgHeight },
-        arrowPosition: { x: entryX, y: entryY, angle }
+        arrowPosition: { x: end.x, y: end.y, angle }
     };
 }
 
@@ -233,7 +233,8 @@ export function Edge({
                     pointerEvents: "none",
                     overflow: "visible",
                     transform: `translate(-${arrowSize / 2}px, -${arrowSize / 2}px) rotate(${arrowPosition.angle}deg)`,
-                    transformOrigin: `${arrowSize / 2}px ${arrowSize / 2}px`
+                    transformOrigin: `${arrowSize / 2}px ${arrowSize / 2}px`,
+                    zIndex: 999
                 }}
             >
                 <polygon
