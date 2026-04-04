@@ -1,0 +1,15 @@
+info:
+  name: Get Nodes
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: http://192.168.64.3:3000/nodes
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
