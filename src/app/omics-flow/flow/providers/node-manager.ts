@@ -2,7 +2,6 @@ import { Node, NodeData } from "../components/node";
 
 const HARDCODED_NODE_DATA: NodeData[] = [
     {
-        "dir": "nodes/001-raw-input",
         "info": {
             "uid": "001-raw-input",
             "name": "Raw input - Sarcoma",
@@ -16,7 +15,6 @@ const HARDCODED_NODE_DATA: NodeData[] = [
         }
     },
     {
-        "dir": "nodes/002-processing",
         "info": {
             "uid": "002-processing",
             "name": "Data Processing",
@@ -30,7 +28,6 @@ const HARDCODED_NODE_DATA: NodeData[] = [
         }
     },
     {
-        "dir": "nodes/003-analysis",
         "info": {
             "uid": "003-analysis",
             "name": "Data Analysis",
@@ -46,15 +43,20 @@ const HARDCODED_NODE_DATA: NodeData[] = [
 ];
 
 export class NodeManager {
-    private nodes: Node[] = [];
+    // private nodes: Node[] = [];
+    private nodes: Record<string, Node>;
 
     private constructor() {
-        this.nodes = HARDCODED_NODE_DATA.map(data => new Node(data));
+        this.nodes = {};
+        HARDCODED_NODE_DATA.forEach(data => {
+            const node = new Node(data);
+            this.nodes[node.uid] = node;
+        });
     }
 
     public static readonly instance: NodeManager = new NodeManager();
 
     public getNodes(): Node[] {
-        return this.nodes;
+        return Object.values(this.nodes);
     }
 }

@@ -9,7 +9,6 @@ export interface NodeInfo {
 }
 
 export interface NodeData {
-    dir: string;
     info: NodeInfo;
 }
 
