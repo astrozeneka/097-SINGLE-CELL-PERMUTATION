@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Grid } from "./components/grid";
 import { Node } from "./components/node";
+import NodeDetailView from "./components/node-detail-view";
 
 export default function Flow() {
     // The node that is currently selected by the user
@@ -14,7 +15,14 @@ export default function Flow() {
                 <Grid selectedNode={selectedNode} setSelectedNode={setSelectedNode}></Grid>
             </div>
             <div style={{ flex: 1}}>
-                Hello
+                {selectedNode ? (
+                    <NodeDetailView node={selectedNode} />
+                ) : (
+                    <div style={{ padding: "20px" }}>
+                        <h2>No node selected</h2>
+                        <p>Please select a node to see its details.</p>
+                    </div>
+                )}
             </div>
         </div>
     )

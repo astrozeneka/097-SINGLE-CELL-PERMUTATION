@@ -41,13 +41,15 @@ export interface NodeDimensions {
 
 interface NodeComponentProps {
     node: Node;
+    isSelected?: boolean;
     onDimensionsChange?: (uid: string, dimensions: NodeDimensions) => void;
     onPositionChange?: (uid: string, x: number, y: number) => void;
+    onClick?: (node: Node) => void;
 }
 
 type ResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right" | null;
 
-export function NodeComponent({ node, onDimensionsChange, onPositionChange }: NodeComponentProps) {
+export function NodeComponent({ node, isSelected, onDimensionsChange, onPositionChange, onClick }: NodeComponentProps) {
     const nodeRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [isResizing, setIsResizing] = useState<ResizeCorner>(null);
@@ -140,9 +142,10 @@ export function NodeComponent({ node, onDimensionsChange, onPositionChange }: No
     const handleMouseDown = useCallback((e: MouseEvent<HTMLDivElement>) => {
         if (e.button !== 0) return;
 
+        onClick?.(node);
         setDragStart({ x: e.clientX - node.x, y: e.clientY - node.y });
         setIsDragging(true);
-    }, [node.x, node.y]);
+    }, [node, onClick]);
 
     const handleCornerMouseDown = useCallback((corner: ResizeCorner, e: MouseEvent<HTMLDivElement>) => {
         e.stopPropagation();
@@ -185,7 +188,7 @@ export function NodeComponent({ node, onDimensionsChange, onPositionChange }: No
                 minHeight: "60px",
                 padding: "16px",
                 background: "white",
-                border: "1px solid #ccc",
+                border: `2px solid ${isSelected ? "#4A90E2" : "#ccc"}`,
                 borderRadius: "8px",
                 boxSizing: "border-box",
                 cursor: isDragging ? "grabbing" : "grab",

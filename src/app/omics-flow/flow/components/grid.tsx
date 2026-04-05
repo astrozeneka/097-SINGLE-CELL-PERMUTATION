@@ -36,6 +36,10 @@ export function Grid({ selectedNode, setSelectedNode }: {
         }
     }, [nodesMap]);
 
+    const handleNodeClick = useCallback((node: Node) => {
+        setSelectedNode(node);
+    }, [setSelectedNode]);
+
     const edges = nodes.flatMap(node =>
         node.edgesIn.map(sourceUid => ({
             source: nodesMap[sourceUid],
@@ -89,8 +93,10 @@ export function Grid({ selectedNode, setSelectedNode }: {
                     <NodeComponent
                         key={node.uid}
                         node={node}
+                        isSelected={selectedNode?.uid === node.uid}
                         onDimensionsChange={handleDimensionsChange}
                         onPositionChange={handlePositionChange}
+                        onClick={handleNodeClick}
                     />
                 ))}
             </Canvas>
