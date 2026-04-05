@@ -5,12 +5,14 @@ import { Canvas, Transform } from "./canvas";
 import { Edge } from "./edge";
 import { Selectable } from "./selectable";
 import { NodeContextMenu } from "./node-context-menu";
+import { useSshCredentials } from "../../hook/use-ssh-credentials";
 
 export function Grid({ selectedNodes, setSelectedNodes }: {
     selectedNodes: Node[],
     setSelectedNodes: Dispatch<SetStateAction<Node[]>>
 }) {
     const nodeManager = NodeManager.instance;
+    const credentials = useSshCredentials();
     const [areNodesLoading, setAreNodesLoading] = useState(true);
     const [, forceUpdate] = useState({});
     const nodes = nodeManager.getNodes();
@@ -21,8 +23,9 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
     }, {} as Record<string, typeof nodes[0]>);
 
     const [nodeDimensions, setNodeDimensions] = useState<Record<string, NodeDimensions>>({});
-    const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+    const [contextMenu, setContextMenu] = useState<{ x: number; y: number; type: 'node' | 'canvas'; nodes: Node[] } | null>(null);
     const [transform, setTransform] = useState<Transform>({ x: 0, y: 0, scale: 1 });
+    const [clipboard, setClipboard] = useState<{ nodes: Node[]; mode: 'clone' } | null>(null);
 
     const handleDimensionsChange = useCallback((uid: string, dimensions: NodeDimensions) => {
         setNodeDimensions(prev => ({
@@ -55,17 +58,69 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
     }, [setSelectedNodes]);
     const handleNodeContextMenu = useCallback((node: Node, e: MouseEvent<HTMLDivElement>) => {
         // If right-clicked node is not in selection, select only it
+        let contextNodes: Node[];
         if (!selectedNodes.some(n => n.uid === node.uid)) {
+            contextNodes = [node];
             setSelectedNodes([node]);
+        } else {
+            contextNodes = selectedNodes;
         }
-        setContextMenu({ x: e.clientX, y: e.clientY });
+        setContextMenu({ x: e.clientX, y: e.clientY, type: 'node', nodes: contextNodes });
     }, [selectedNodes, setSelectedNodes]);
 
-    const handleContextMenuAction = useCallback((action: 'copy' | 'cut' | 'delete') => {
-        // Placeholder implementations
-        console.log(`${action} action on nodes:`, selectedNodes.map(n => n.uid));
+    const handleCanvasContextMenu = useCallback((e: MouseEvent<HTMLDivElement>) => {
+        // Only show canvas context menu if we have clipboard data
+        if (clipboard) {
+            setContextMenu({ x: e.clientX, y: e.clientY, type: 'canvas', nodes: [] });
+        }
+    }, [clipboard]);
+
+    const handlePaste = useCallback(async (cursorPosition: { x: number; y: number }) => {
+        if (!clipboard) return;
+
+        // Calculate the center of the clipboard nodes
+        const clipboardNodes = clipboard.nodes;
+        const avgX = clipboardNodes.reduce((sum, node) => sum + node.x, 0) / clipboardNodes.length;
+        const avgY = clipboardNodes.reduce((sum, node) => sum + node.y, 0) / clipboardNodes.length;
+
+        // Convert cursor position to canvas coordinates
+        const canvasX = (cursorPosition.x - transform.x) / transform.scale;
+        const canvasY = (cursorPosition.y - transform.y) / transform.scale;
+
+        // Calculate offset to center clipboard nodes around cursor
+        const offsetX = canvasX - avgX;
+        const offsetY = canvasY - avgY;
+
+        // Clone each node
+        for (const node of clipboardNodes) {
+            const newX = node.x + offsetX;
+            const newY = node.y + offsetY;
+
+            await nodeManager.cloneNode(
+                node.uid,
+                newX,
+                newY,
+                credentials.linux_user,
+                credentials.private_key
+            );
+        }
+
+        // Force update to reflect new nodes
+        forceUpdate({});
+    }, [clipboard, transform, nodeManager, credentials]);
+
+    const handleContextMenuAction = useCallback((action: 'copy' | 'cut' | 'delete' | 'paste', cursorPosition?: { x: number; y: number }) => {
+        if (action === 'copy' && contextMenu) {
+            console.log("Add things to clipboard", contextMenu.nodes)
+            setClipboard({
+                nodes: contextMenu.nodes,
+                mode: 'clone'
+            });
+        } else if (action === 'paste' && clipboard && cursorPosition) {
+            handlePaste(cursorPosition);
+        }
         setContextMenu(null);
-    }, [selectedNodes]);
+    }, [contextMenu, clipboard, handlePaste]);
 
     // Close context menu on click outside
     useEffect(() => {
@@ -114,11 +169,12 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
     }
 
     return (
-        <Selectable 
+        <Selectable
             transform={transform}
             setSelectedNodes={setSelectedNodes}
             nodes={nodes}
             nodeDimensions={nodeDimensions}
+            onContextMenu={handleCanvasContextMenu}
         >
             <Canvas transform={transform} setTransform={setTransform}>
                 {edges.map(edge => (
@@ -142,7 +198,10 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
                     />
                 ))}
             </Canvas>
-            <NodeContextMenu contextMenu={contextMenu} onAction={handleContextMenuAction} />
+            <NodeContextMenu
+                contextMenu={contextMenu}
+                onAction={handleContextMenuAction}
+            />
         </Selectable>
     );
 }

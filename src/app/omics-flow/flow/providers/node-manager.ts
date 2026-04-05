@@ -1,46 +1,5 @@
 import { Node, NodeData } from "../components/node";
 
-const HARDCODED_NODE_DATA: NodeData[] = [
-    {
-        "info": {
-            "uid": "001-raw-input",
-            "name": "Raw input - Sarcoma",
-            "description": "Raw input data",
-            "canvas-x": 100,
-            "canvas-y": 100,
-            "edges-in": [],
-            "exports": {
-                "raw": "*/*.csv"
-            }
-        }
-    },
-    {
-        "info": {
-            "uid": "002-processing",
-            "name": "Data Processing",
-            "description": "Process raw data",
-            "canvas-x": 400,
-            "canvas-y": 150,
-            "edges-in": ["001-raw-input"],
-            "exports": {
-                "processed": "*/*.json"
-            }
-        }
-    },
-    {
-        "info": {
-            "uid": "003-analysis",
-            "name": "Data Analysis",
-            "description": "Analyze processed data",
-            "canvas-x": 700,
-            "canvas-y": 200,
-            "edges-in": ["002-processing"],
-            "exports": {
-                "results": "*/*.txt"
-            }
-        }
-    }
-];
 
 export class NodeManager {
     // private nodes: Node[] = [];
@@ -66,5 +25,70 @@ export class NodeManager {
             const node = new Node(data);
             this.nodes[node.uid] = node;
         });
+    }
+
+    public addNode(nodeData: NodeData): void {
+        const node = new Node(nodeData);
+        this.nodes[node.uid] = node;
+    }
+
+    public generateCloneName(originalUid: string): string {
+        let suffix = 1;
+        let newUid = `${originalUid}-clone`;
+
+        while (this.nodes[newUid]) {
+            suffix++;
+            newUid = `${originalUid}-clone-${suffix}`;
+        }
+
+        return newUid;
+    }
+
+    public async cloneNode(
+        sourceUid: string,
+        x: number,
+        y: number,
+        linuxUser: string,
+        privateKey: string
+    ): Promise<Node | null> {
+        console.log(`Cloning node ${sourceUid} at (${x}, ${y}) with user ${linuxUser}`);
+        const destinationUid = this.generateCloneName(sourceUid);
+
+        const requestBody = {
+            linux_user: linuxUser,
+            x,
+            y,
+            src_node: sourceUid,
+            dst_node: destinationUid,
+            private_key: privateKey
+        };
+
+        const response = await fetch("http://192.168.64.3:3000/nodes/clone", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to clone node: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        if (data.exitCode !== 0) {
+            throw new Error(`Clone failed: ${data.stderr || data.stdout}`);
+        }
+
+        const nodeData: NodeData = {
+            info: {
+                ...data.node.info,
+                exports: data.node.info.exports || {}
+            }
+        };
+
+        this.addNode(nodeData);
+        return this.nodes[destinationUid];
     }
 }

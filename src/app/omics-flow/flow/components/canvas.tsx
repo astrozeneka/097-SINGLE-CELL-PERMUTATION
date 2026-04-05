@@ -58,8 +58,8 @@ export function Canvas({ children, transform, setTransform }: CanvasProps) {
     }, [setTransform]);
 
     const handleMouseDown = useCallback((e: MouseEvent<HTMLDivElement>) => {
-        // Right mouse button (button 2)
-        if (e.button === 2) {
+        // Middle mouse button (button 1) for panning
+        if (e.button === 1) {
             e.preventDefault();
             setIsPanning(true);
             setPanStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
@@ -77,14 +77,9 @@ export function Canvas({ children, transform, setTransform }: CanvasProps) {
     }, [isPanning, panStart]);
 
     const handleMouseUp = useCallback((e: MouseEvent<HTMLDivElement>) => {
-        if (e.button === 2) {
+        if (e.button === 1) {
             setIsPanning(false);
         }
-    }, []);
-
-    const handleContextMenu = useCallback((e: MouseEvent<HTMLDivElement>) => {
-        // Prevent context menu on right click
-        e.preventDefault();
     }, []);
 
     return (
@@ -94,7 +89,6 @@ export function Canvas({ children, transform, setTransform }: CanvasProps) {
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={() => setIsPanning(false)}
-            onContextMenu={handleContextMenu}
             style={{
                 width: "100%",
                 height: "100%",

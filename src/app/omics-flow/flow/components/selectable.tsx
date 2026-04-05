@@ -2,12 +2,13 @@ import { useCallback, MouseEvent, useState } from "react";
 import { Transform } from "./canvas";
 import { Node, NodeDimensions } from "./node";
 
-export function Selectable({ children, transform, setSelectedNodes, nodes, nodeDimensions }: {
+export function Selectable({ children, transform, setSelectedNodes, nodes, nodeDimensions, onContextMenu }: {
     children: React.ReactNode,
     transform: Transform,
     setSelectedNodes: (nodes: any) => void,
     nodes: Node[],
-    nodeDimensions: Record<string, NodeDimensions> // a more efficient way can be used
+    nodeDimensions: Record<string, NodeDimensions>, // a more efficient way can be used
+    onContextMenu?: (e: MouseEvent<HTMLDivElement>) => void
 }) {
     
 
@@ -93,12 +94,18 @@ export function Selectable({ children, transform, setSelectedNodes, nodes, nodeD
         }
     }, [isSelecting, selectionBox, transform]);
 
+    const handleContextMenu = useCallback((e: MouseEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        onContextMenu?.(e);
+    }, [onContextMenu]);
+
     return (
         <div
             style={{ width: "100%", height: "100%", background: "#f5f5f5" }}
             onMouseDown={handleCanvasMouseDown}
             onMouseMove={handleCanvasMouseMove}
             onMouseUp={handleCanvasMouseUp}
+            onContextMenu={handleContextMenu}
         >
             {children}
 
