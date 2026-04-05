@@ -34,7 +34,8 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
         }));
     }, []);
 
-    const handlePositionChange = useCallback((uid: string, x: number, y: number) => {
+    const handleDrag = useCallback((uid: string, x: number, y: number) => {
+        console.log("handleDrag")
         const node = nodesMap[uid];
         if (node) {
             node.x = x;
@@ -42,6 +43,29 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
             forceUpdate({});
         }
     }, [nodesMap]);
+
+    const handlePositionChanged = useCallback(async (uid: string, x: number, y: number) => {
+        try {
+            const response = await fetch(`http://192.168.64.3:3000/nodes/${uid}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    linux_user: credentials.linux_user,
+                    private_key: credentials.private_key,
+                    'canvas-x': x,
+                    'canvas-y': y
+                })
+            });
+
+            if (!response.ok) {
+                console.error(`Failed to update node position: ${response.statusText}`);
+            }
+        } catch (error) {
+            console.error('Error updating node position:', error);
+        }
+    }, [credentials]);
 
     const handleNodeClick = useCallback((node: Node, e?: MouseEvent) => {
         if (e?.ctrlKey || e?.metaKey) {
@@ -192,7 +216,8 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
                         node={node}
                         isSelected={selectedNodes.some(n => n.uid === node.uid)}
                         onDimensionsChange={handleDimensionsChange}
-                        onPositionChange={handlePositionChange}
+                        onDrag={handleDrag}
+                        onPositionChanged={handlePositionChanged}
                         onClick={handleNodeClick}
                         onContextMenu={handleNodeContextMenu}
                     />

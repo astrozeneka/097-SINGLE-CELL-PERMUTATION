@@ -43,14 +43,15 @@ interface NodeComponentProps {
     node: Node;
     isSelected?: boolean;
     onDimensionsChange?: (uid: string, dimensions: NodeDimensions) => void;
-    onPositionChange?: (uid: string, x: number, y: number) => void;
+    onDrag?: (uid: string, x: number, y: number) => void;
+    onPositionChanged?: (uid: string, x: number, y: number) => void;
     onClick?: (node: Node, e?: MouseEvent<HTMLDivElement>) => void;
     onContextMenu?: (node: Node, e: MouseEvent<HTMLDivElement>) => void;
 }
 
 type ResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right" | null;
 
-export function NodeComponent({ node, isSelected, onDimensionsChange, onPositionChange, onClick, onContextMenu }: NodeComponentProps) {
+export function NodeComponent({ node, isSelected, onDimensionsChange, onDrag, onPositionChanged, onClick, onContextMenu }: NodeComponentProps) {
     const nodeRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [isResizing, setIsResizing] = useState<ResizeCorner>(null);
@@ -81,10 +82,10 @@ export function NodeComponent({ node, isSelected, onDimensionsChange, onPosition
         if (!isDragging && !isResizing) return;
 
         const handleMouseMove = (e: globalThis.MouseEvent) => {
-            if (isDragging && onPositionChange) {
+            if (isDragging && onDrag) {
                 const newX = e.clientX - dragStart.x;
                 const newY = e.clientY - dragStart.y;
-                onPositionChange(node.uid, newX, newY);
+                onDrag(node.uid, newX, newY);
             } else if (isResizing && nodeRef.current) {
                 const element = nodeRef.current;
                 const deltaX = e.clientX - resizeStart.x;
@@ -120,13 +121,16 @@ export function NodeComponent({ node, isSelected, onDimensionsChange, onPosition
 
                 element.style.width = `${Math.max(100, newWidth)}px`;
                 element.style.height = `${Math.max(60, newHeight)}px`;
-                if (onPositionChange) {
-                    onPositionChange(node.uid, newX, newY);
+                if (onDrag) {
+                    onDrag(node.uid, newX, newY);
                 }
             }
         };
 
         const handleMouseUp = () => {
+            if (isDragging && onPositionChanged) {
+                onPositionChanged(node.uid, node.x, node.y);
+            }
             setIsDragging(false);
             setIsResizing(null);
         };
@@ -138,7 +142,7 @@ export function NodeComponent({ node, isSelected, onDimensionsChange, onPosition
             document.removeEventListener("mousemove", handleMouseMove);
             document.removeEventListener("mouseup", handleMouseUp);
         };
-    }, [isDragging, isResizing, dragStart, resizeStart, node.uid, onPositionChange]);
+    }, [isDragging, isResizing, dragStart, resizeStart, node.uid, node.x, node.y, onDrag, onPositionChanged]);
 
     const handleMouseDown = useCallback((e: MouseEvent<HTMLDivElement>) => {
         if (e.button !== 0) return;
