@@ -44,12 +44,13 @@ interface NodeComponentProps {
     isSelected?: boolean;
     onDimensionsChange?: (uid: string, dimensions: NodeDimensions) => void;
     onPositionChange?: (uid: string, x: number, y: number) => void;
-    onClick?: (node: Node) => void;
+    onClick?: (node: Node, e?: MouseEvent<HTMLDivElement>) => void;
+    onContextMenu?: (node: Node, e: MouseEvent<HTMLDivElement>) => void;
 }
 
 type ResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right" | null;
 
-export function NodeComponent({ node, isSelected, onDimensionsChange, onPositionChange, onClick }: NodeComponentProps) {
+export function NodeComponent({ node, isSelected, onDimensionsChange, onPositionChange, onClick, onContextMenu }: NodeComponentProps) {
     const nodeRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [isResizing, setIsResizing] = useState<ResizeCorner>(null);
@@ -142,10 +143,17 @@ export function NodeComponent({ node, isSelected, onDimensionsChange, onPosition
     const handleMouseDown = useCallback((e: MouseEvent<HTMLDivElement>) => {
         if (e.button !== 0) return;
 
-        onClick?.(node);
+        e.stopPropagation();
+        onClick?.(node, e);
         setDragStart({ x: e.clientX - node.x, y: e.clientY - node.y });
         setIsDragging(true);
     }, [node, onClick]);
+
+    const handleContextMenu = useCallback((e: MouseEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onContextMenu?.(node, e);
+    }, [node, onContextMenu]);
 
     const handleCornerMouseDown = useCallback((corner: ResizeCorner, e: MouseEvent<HTMLDivElement>) => {
         e.stopPropagation();
@@ -180,6 +188,7 @@ export function NodeComponent({ node, isSelected, onDimensionsChange, onPosition
         <div
             ref={nodeRef}
             onMouseDown={handleMouseDown}
+            onContextMenu={handleContextMenu}
             style={{
                 position: "absolute",
                 left: `${node.x}px`,

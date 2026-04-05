@@ -8,12 +8,12 @@ export interface Transform {
 
 interface CanvasProps {
     children: ReactNode;
-    initialTransform?: Transform;
+    transform: Transform;
+    setTransform: (transform: Transform | ((prev: Transform) => Transform)) => void;
 }
 
-export function Canvas({ children, initialTransform = { x: 0, y: 0, scale: 1 } }: CanvasProps) {
+export function Canvas({ children, transform, setTransform }: CanvasProps) {
     const canvasRef = useRef<HTMLDivElement>(null);
-    const [transform, setTransform] = useState<Transform>(initialTransform);
     const [isPanning, setIsPanning] = useState(false);
     const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
@@ -55,7 +55,7 @@ export function Canvas({ children, initialTransform = { x: 0, y: 0, scale: 1 } }
         return () => {
             canvas.removeEventListener('wheel', handleWheel);
         };
-    }, []);
+    }, [setTransform]);
 
     const handleMouseDown = useCallback((e: MouseEvent<HTMLDivElement>) => {
         // Right mouse button (button 2)
