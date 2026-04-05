@@ -48,15 +48,23 @@ export class NodeManager {
 
     private constructor() {
         this.nodes = {};
-        HARDCODED_NODE_DATA.forEach(data => {
+        /*HARDCODED_NODE_DATA.forEach(data => {
             const node = new Node(data);
             this.nodes[node.uid] = node;
-        });
+        });*/
     }
 
     public static readonly instance: NodeManager = new NodeManager();
 
     public getNodes(): Node[] {
         return Object.values(this.nodes);
+    }
+
+    public setNodes(nodeDataList: NodeData[]): void {
+        this.nodes = {};
+        nodeDataList.forEach(data => {
+            const node = new Node(data);
+            this.nodes[node.uid] = node;
+        });
     }
 }
