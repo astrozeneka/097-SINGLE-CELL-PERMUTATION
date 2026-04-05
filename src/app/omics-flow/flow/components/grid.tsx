@@ -4,6 +4,7 @@ import { Node, NodeComponent, NodeDimensions } from "./node";
 import { Canvas, Transform } from "./canvas";
 import { Edge } from "./edge";
 import { Selectable } from "./selectable";
+import { NodeContextMenu } from "./node-context-menu";
 
 export function Grid({ selectedNodes, setSelectedNodes }: {
     selectedNodes: Node[],
@@ -141,58 +142,7 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
                     />
                 ))}
             </Canvas>
-            {contextMenu && (
-                <div
-                    style={{
-                        position: "fixed",
-                        left: `${contextMenu.x}px`,
-                        top: `${contextMenu.y}px`,
-                        background: "white",
-                        border: "1px solid #ccc",
-                        borderRadius: "4px",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                        zIndex: 10000,
-                        minWidth: "150px"
-                    }}
-                >
-                    <div
-                        onClick={() => handleContextMenuAction('copy')}
-                        style={{
-                            padding: "8px 16px",
-                            cursor: "pointer",
-                            borderBottom: "1px solid #eee"
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = "#f5f5f5"}
-                        onMouseLeave={(e) => e.currentTarget.style.background = "white"}
-                    >
-                        Copy clone
-                    </div>
-                    <div
-                        onClick={() => handleContextMenuAction('cut')}
-                        style={{
-                            padding: "8px 16px",
-                            cursor: "pointer",
-                            borderBottom: "1px solid #eee"
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = "#f5f5f5"}
-                        onMouseLeave={(e) => e.currentTarget.style.background = "white"}
-                    >
-                        Cut
-                    </div>
-                    <div
-                        onClick={() => handleContextMenuAction('delete')}
-                        style={{
-                            padding: "8px 16px",
-                            cursor: "pointer",
-                            color: "#d32f2f"
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = "#f5f5f5"}
-                        onMouseLeave={(e) => e.currentTarget.style.background = "white"}
-                    >
-                        Delete
-                    </div>
-                </div>
-            )}
+            <NodeContextMenu contextMenu={contextMenu} onAction={handleContextMenuAction} />
         </Selectable>
     );
 }
