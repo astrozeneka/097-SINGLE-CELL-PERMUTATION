@@ -3,6 +3,7 @@ import { NodeManager } from "../providers/node-manager";
 import { Node, NodeComponent, NodeDimensions } from "./node";
 import { Canvas, Transform } from "./canvas";
 import { Edge } from "./edge";
+import { Selectable } from "./selectable";
 
 export function Grid({ selectedNodes, setSelectedNodes }: {
     selectedNodes: Node[],
@@ -19,8 +20,6 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
     }, {} as Record<string, typeof nodes[0]>);
 
     const [nodeDimensions, setNodeDimensions] = useState<Record<string, NodeDimensions>>({});
-    const [selectionBox, setSelectionBox] = useState<{ startX: number; startY: number; endX: number; endY: number } | null>(null);
-    const [isSelecting, setIsSelecting] = useState(false);
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
     const [transform, setTransform] = useState<Transform>({ x: 0, y: 0, scale: 1 });
 
@@ -53,81 +52,6 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
             setSelectedNodes([node]);
         }
     }, [setSelectedNodes]);
-
-    const handleCanvasMouseDown = useCallback((e: MouseEvent<HTMLDivElement>) => {
-        // Only start selection on left mouse button
-        // Node clicks will stopPropagation, so this only fires when clicking canvas background
-        if (e.button === 0) {
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-            const screenX = e.clientX - rect.left;
-            const screenY = e.clientY - rect.top;
-
-            // Convert screen coordinates to canvas coordinates
-            const canvasX = (screenX - transform.x) / transform.scale;
-            const canvasY = (screenY - transform.y) / transform.scale;
-
-            setSelectionBox({ startX: canvasX, startY: canvasY, endX: canvasX, endY: canvasY });
-            setIsSelecting(true);
-        }
-    }, [transform]);
-
-    const handleCanvasMouseMove = useCallback((e: MouseEvent<HTMLDivElement>) => {
-        if (isSelecting && selectionBox) {
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-            const screenX = e.clientX - rect.left;
-            const screenY = e.clientY - rect.top;
-
-            // Convert screen coordinates to canvas coordinates
-            const canvasX = (screenX - transform.x) / transform.scale;
-            const canvasY = (screenY - transform.y) / transform.scale;
-
-            setSelectionBox({ ...selectionBox, endX: canvasX, endY: canvasY });
-        }
-    }, [isSelecting, selectionBox, transform]);
-
-    const handleCanvasMouseUp = useCallback(() => {
-        if (isSelecting && selectionBox) {
-            // Calculate selection box bounds
-            const minX = Math.min(selectionBox.startX, selectionBox.endX);
-            const maxX = Math.max(selectionBox.startX, selectionBox.endX);
-            const minY = Math.min(selectionBox.startY, selectionBox.endY);
-            const maxY = Math.max(selectionBox.startY, selectionBox.endY);
-
-            // Find nodes that intersect with selection box
-            const selectedNodesList = nodes.filter(node => {
-                const dims = nodeDimensions[node.uid];
-                if (!dims) return false;
-
-                // Check if any corner of the node is inside the selection box
-                const nodeMinX = node.x;
-                const nodeMaxX = node.x + dims.width;
-                const nodeMinY = node.y;
-                const nodeMaxY = node.y + dims.height;
-
-                // Any corner inside selection box
-                const topLeftInside = nodeMinX >= minX && nodeMinX <= maxX && nodeMinY >= minY && nodeMinY <= maxY;
-                const topRightInside = nodeMaxX >= minX && nodeMaxX <= maxX && nodeMinY >= minY && nodeMinY <= maxY;
-                const bottomLeftInside = nodeMinX >= minX && nodeMinX <= maxX && nodeMaxY >= minY && nodeMaxY <= maxY;
-                const bottomRightInside = nodeMaxX >= minX && nodeMaxX <= maxX && nodeMaxY >= minY && nodeMaxY <= maxY;
-
-                // For now, use any corner inside logic
-                return topLeftInside || topRightInside || bottomLeftInside || bottomRightInside;
-
-                // Alternative: All corners inside (commented out as per requirement)
-                // const allCornersInside =
-                //     (nodeMinX >= minX && nodeMinX <= maxX && nodeMinY >= minY && nodeMinY <= maxY) &&
-                //     (nodeMaxX >= minX && nodeMaxX <= maxX && nodeMinY >= minY && nodeMinY <= maxY) &&
-                //     (nodeMinX >= minX && nodeMinX <= maxX && nodeMaxY >= minY && nodeMaxY <= maxY) &&
-                //     (nodeMaxX >= minX && nodeMaxX <= maxX && nodeMaxY >= minY && nodeMaxY <= maxY);
-                // return allCornersInside;
-            });
-
-            setSelectedNodes(selectedNodesList);
-            setSelectionBox(null);
-            setIsSelecting(false);
-        }
-    }, [isSelecting, selectionBox, nodes, nodeDimensions, setSelectedNodes]);
-
     const handleNodeContextMenu = useCallback((node: Node, e: MouseEvent<HTMLDivElement>) => {
         // If right-clicked node is not in selection, select only it
         if (!selectedNodes.some(n => n.uid === node.uid)) {
@@ -189,11 +113,11 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
     }
 
     return (
-        <div
-            style={{ width: "100%", height: "100%", background: "#f5f5f5" }}
-            onMouseDown={handleCanvasMouseDown}
-            onMouseMove={handleCanvasMouseMove}
-            onMouseUp={handleCanvasMouseUp}
+        <Selectable 
+            transform={transform}
+            setSelectedNodes={setSelectedNodes}
+            nodes={nodes}
+            nodeDimensions={nodeDimensions}
         >
             <Canvas transform={transform} setTransform={setTransform}>
                 {edges.map(edge => (
@@ -216,21 +140,6 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
                         onContextMenu={handleNodeContextMenu}
                     />
                 ))}
-                {selectionBox && (
-                    <div
-                        style={{
-                            position: "absolute",
-                            left: `${Math.min(selectionBox.startX, selectionBox.endX)}px`,
-                            top: `${Math.min(selectionBox.startY, selectionBox.endY)}px`,
-                            width: `${Math.abs(selectionBox.endX - selectionBox.startX)}px`,
-                            height: `${Math.abs(selectionBox.endY - selectionBox.startY)}px`,
-                            border: "2px dashed #4A90E2",
-                            background: "rgba(74, 144, 226, 0.1)",
-                            pointerEvents: "none",
-                            zIndex: 1000
-                        }}
-                    />
-                )}
             </Canvas>
             {contextMenu && (
                 <div
@@ -284,6 +193,6 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
                     </div>
                 </div>
             )}
-        </div>
+        </Selectable>
     );
 }
