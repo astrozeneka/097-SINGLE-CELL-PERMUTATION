@@ -1,6 +1,13 @@
+import { useState } from "react";
 import { Node } from "../components/node";
 
 export default function NodeDetailView({ node }: { node: Node }) {
+    
+    const [isScriptRunning, setIsScriptRunning] = useState(false);
+    const handleRunScript = () => {
+
+    };
+
     return (
 
         <div style={{ padding: "20px" }}>
@@ -12,6 +19,7 @@ export default function NodeDetailView({ node }: { node: Node }) {
                     <li key={key}>{key}: {value}</li>
                 ))}
             </ul>
+            <button onClick={handleRunScript}>Run Script</button>
         </div>
     )
 
