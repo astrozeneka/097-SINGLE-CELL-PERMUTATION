@@ -5,6 +5,7 @@ import { Canvas, Transform } from "./canvas";
 import { Edge } from "./edge";
 import { Selectable } from "./selectable";
 import { NodeContextMenu } from "./node-context-menu";
+import { CreateNodeDialog } from "./create-node-dialog";
 import { useSshCredentials } from "../../hook/use-ssh-credentials";
 
 export function Grid({ selectedNodes, setSelectedNodes }: {
@@ -26,6 +27,8 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; type: 'node' | 'canvas'; nodes: Node[] } | null>(null);
     const [transform, setTransform] = useState<Transform>({ x: 0, y: 0, scale: 1 });
     const [clipboard, setClipboard] = useState<{ nodes: Node[]; mode: 'clone' } | null>(null);
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [createNodePosition, setCreateNodePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
     const handleDimensionsChange = useCallback((uid: string, dimensions: NodeDimensions) => {
         setNodeDimensions(prev => ({
@@ -92,11 +95,9 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
     }, [selectedNodes, setSelectedNodes]);
 
     const handleCanvasContextMenu = useCallback((e: MouseEvent<HTMLDivElement>) => {
-        // Only show canvas context menu if we have clipboard data
-        if (clipboard) {
-            setContextMenu({ x: e.clientX, y: e.clientY, type: 'canvas', nodes: [] });
-        }
-    }, [clipboard]);
+        // Always show canvas context menu (for New Node and Paste options)
+        setContextMenu({ x: e.clientX, y: e.clientY, type: 'canvas', nodes: [] });
+    }, []);
 
     const handlePaste = useCallback(async (cursorPosition: { x: number; y: number }) => {
         if (!clipboard) return;
@@ -132,7 +133,19 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
         forceUpdate({});
     }, [clipboard, transform, nodeManager, credentials]);
 
-    const handleContextMenuAction = useCallback((action: 'copy' | 'cut' | 'delete' | 'paste', cursorPosition?: { x: number; y: number }) => {
+    const handleCreate = useCallback(async (name: string, description: string) => {
+        await nodeManager.createNode(
+            name,
+            description,
+            createNodePosition.x,
+            createNodePosition.y,
+            credentials.linux_user,
+            credentials.private_key
+        );
+        forceUpdate({});
+    }, [nodeManager, createNodePosition, credentials]);
+
+    const handleContextMenuAction = useCallback((action: 'copy' | 'cut' | 'delete' | 'paste' | 'new', cursorPosition?: { x: number; y: number }) => {
         if (action === 'copy' && contextMenu) {
             console.log("Add things to clipboard", contextMenu.nodes)
             setClipboard({
@@ -141,9 +154,15 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
             });
         } else if (action === 'paste' && clipboard && cursorPosition) {
             handlePaste(cursorPosition);
+        } else if (action === 'new' && cursorPosition) {
+            // Convert cursor position to canvas coordinates
+            const canvasX = (cursorPosition.x - transform.x) / transform.scale;
+            const canvasY = (cursorPosition.y - transform.y) / transform.scale;
+            setCreateNodePosition({ x: canvasX, y: canvasY });
+            setIsCreateDialogOpen(true);
         }
         setContextMenu(null);
-    }, [contextMenu, clipboard, handlePaste]);
+    }, [contextMenu, clipboard, handlePaste, transform]);
 
     // Close context menu on click outside
     useEffect(() => {
@@ -190,42 +209,49 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
             </div>
         );
     }
-    
+
     return (
-        <Selectable
-            transform={transform}
-            setSelectedNodes={setSelectedNodes}
-            nodes={nodes}
-            nodeDimensions={nodeDimensions}
-            onContextMenu={handleCanvasContextMenu}
-        >
-            <Canvas transform={transform} setTransform={setTransform}>
-                {edges.map(edge => (
-                    <Edge
-                        key={`${edge.source.uid}-${edge.destination.uid}`}
-                        source={edge.source}
-                        destination={edge.destination}
-                        sourceDimensions={nodeDimensions[edge.source.uid]}
-                        destinationDimensions={nodeDimensions[edge.destination.uid]}
-                    />
-                ))}
-                {nodes.map(node => (
-                    <NodeComponent
-                        key={node.uid}
-                        node={node}
-                        isSelected={selectedNodes.some(n => n.uid === node.uid)}
-                        onDimensionsChange={handleDimensionsChange}
-                        onDrag={handleDrag}
-                        onPositionChanged={handlePositionChanged}
-                        onClick={handleNodeClick}
-                        onContextMenu={handleNodeContextMenu}
-                    />
-                ))}
-            </Canvas>
-            <NodeContextMenu
-                contextMenu={contextMenu}
-                onAction={handleContextMenuAction}
+        <>
+            <Selectable
+                transform={transform}
+                setSelectedNodes={setSelectedNodes}
+                nodes={nodes}
+                nodeDimensions={nodeDimensions}
+                onContextMenu={handleCanvasContextMenu}
+            >
+                <Canvas transform={transform} setTransform={setTransform}>
+                    {edges.map(edge => (
+                        <Edge
+                            key={`${edge.source.uid}-${edge.destination.uid}`}
+                            source={edge.source}
+                            destination={edge.destination}
+                            sourceDimensions={nodeDimensions[edge.source.uid]}
+                            destinationDimensions={nodeDimensions[edge.destination.uid]}
+                        />
+                    ))}
+                    {nodes.map(node => (
+                        <NodeComponent
+                            key={node.uid}
+                            node={node}
+                            isSelected={selectedNodes.some(n => n.uid === node.uid)}
+                            onDimensionsChange={handleDimensionsChange}
+                            onDrag={handleDrag}
+                            onPositionChanged={handlePositionChanged}
+                            onClick={handleNodeClick}
+                            onContextMenu={handleNodeContextMenu}
+                        />
+                    ))}
+                </Canvas>
+                <NodeContextMenu
+                    contextMenu={contextMenu}
+                    onAction={handleContextMenuAction}
+                />
+            </Selectable>
+            <CreateNodeDialog
+                isOpen={isCreateDialogOpen}
+                onClose={() => setIsCreateDialogOpen(false)}
+                onCreate={handleCreate}
             />
-        </Selectable>
+        </>
     );
 }

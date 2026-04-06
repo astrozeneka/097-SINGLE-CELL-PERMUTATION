@@ -44,6 +44,50 @@ export class NodeManager {
         return newUid;
     }
 
+    public async createNode(
+        name: string,
+        description: string,
+        x: number,
+        y: number,
+        linuxUser: string,
+        privateKey: string
+    ): Promise<Node | null> {
+        console.log(`Creating node "${name}" at (${x}, ${y}) with user ${linuxUser}`);
+
+        const requestBody = {
+            linux_user: linuxUser,
+            private_key: privateKey,
+            name,
+            description,
+            x,
+            y
+        };
+
+        const response = await fetch("http://192.168.64.3:3000/nodes", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to create node: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        const nodeData: NodeData = {
+            info: {
+                ...data.node.info,
+                exports: data.node.info.exports || {}
+            }
+        };
+
+        this.addNode(nodeData);
+        return this.nodes[data.node.info.uid];
+    }
+
     public async cloneNode(
         sourceUid: string,
         x: number,

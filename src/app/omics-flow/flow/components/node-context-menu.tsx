@@ -5,13 +5,13 @@ export function NodeContextMenu({
     onAction
 }: {
     contextMenu: { x: number; y: number; type: 'node' | 'canvas'; nodes: any[] } | null;
-    onAction: (action: 'copy' | 'cut' | 'delete' | 'paste', cursorPosition?: { x: number; y: number }) => void;
+    onAction: (action: 'copy' | 'cut' | 'delete' | 'paste' | 'new', cursorPosition?: { x: number; y: number }) => void;
 }) {
     if (!contextMenu) return null;
 
     const isCanvasMenu = contextMenu.type === 'canvas';
 
-    const handleAction = (action: 'copy' | 'cut' | 'delete' | 'paste', cursorPosition?: { x: number; y: number }) => {
+    const handleAction = (action: 'copy' | 'cut' | 'delete' | 'paste' | 'new', cursorPosition?: { x: number; y: number }) => {
         return (e: React.MouseEvent) => {
             e.stopPropagation();
             onAction(action, cursorPosition);
@@ -36,18 +36,32 @@ export function NodeContextMenu({
             onMouseUp={(e) => e.stopPropagation()}
         >
             {isCanvasMenu ? (
-                // Canvas menu: only show Paste
-                <div
-                    onClick={handleAction('paste', { x: contextMenu.x, y: contextMenu.y })}
-                    style={{
-                        padding: "8px 16px",
-                        cursor: "pointer"
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = "#f5f5f5"}
-                    onMouseLeave={(e) => e.currentTarget.style.background = "white"}
-                >
-                    Paste
-                </div>
+                // Canvas menu: show New Node and Paste
+                <>
+                    <div
+                        onClick={handleAction('new', { x: contextMenu.x, y: contextMenu.y })}
+                        style={{
+                            padding: "8px 16px",
+                            cursor: "pointer",
+                            borderBottom: "1px solid #eee"
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = "#f5f5f5"}
+                        onMouseLeave={(e) => e.currentTarget.style.background = "white"}
+                    >
+                        New Node
+                    </div>
+                    <div
+                        onClick={handleAction('paste', { x: contextMenu.x, y: contextMenu.y })}
+                        style={{
+                            padding: "8px 16px",
+                            cursor: "pointer"
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = "#f5f5f5"}
+                        onMouseLeave={(e) => e.currentTarget.style.background = "white"}
+                    >
+                        Paste
+                    </div>
+                </>
             ) : (
                 // Node menu: show Copy, Cut, Delete
                 <>
