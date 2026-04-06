@@ -5,7 +5,7 @@ export interface ScriptRunnerConfig {
     linux_user: string;
     private_key: string;
     environment: string;
-    script: string;
+    script?: string;
     args?: string[];
     host?: string;
     port?: number;
