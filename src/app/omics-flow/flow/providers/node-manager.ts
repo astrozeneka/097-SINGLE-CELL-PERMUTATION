@@ -1,4 +1,5 @@
 import { Node, NodeData } from "../components/node";
+import { OMICS_FLOW_API_URL } from "@/config/api";
 
 
 export class NodeManager {
@@ -63,7 +64,7 @@ export class NodeManager {
             y
         };
 
-        const response = await fetch("http://192.168.64.3:3000/nodes", {
+        const response = await fetch(`${OMICS_FLOW_API_URL}/nodes`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -107,7 +108,7 @@ export class NodeManager {
             private_key: privateKey
         };
 
-        const response = await fetch("http://192.168.64.3:3000/nodes/clone", {
+        const response = await fetch(`${OMICS_FLOW_API_URL}/nodes/clone`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"

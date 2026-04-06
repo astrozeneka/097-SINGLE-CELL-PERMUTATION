@@ -1,3 +1,5 @@
+import { OMICS_FLOW_WS_URL } from "@/config/api";
+
 export interface FileBrowserConfig {
     node_id: string;
     linux_user: string;
@@ -44,7 +46,7 @@ export class FileBrowserSession {
         }
 
         this.config = config;
-        const wsUrl = config.wsUrl || 'ws://192.168.64.3:3000/script-runner';
+        const wsUrl = config.wsUrl || `${OMICS_FLOW_WS_URL}/script-runner`;
         this.ws = new WebSocket(wsUrl);
 
         this.ws.onopen = () => {

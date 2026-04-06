@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { OMICS_FLOW_WS_URL } from '@/config/api';
 
 export interface ScriptRunnerConfig {
     node_id: string;
@@ -32,7 +33,7 @@ export function useScriptRunner(callbacks?: ScriptRunnerCallbacks) {
             ws.current.close();
         }
 
-        const wsUrl = config.wsUrl || 'ws://192.168.64.3:3000/script-runner';
+        const wsUrl = config.wsUrl || `${OMICS_FLOW_WS_URL}/script-runner`;
         console.log("wsUrl:", wsUrl);
         ws.current = new WebSocket(wsUrl);
 
