@@ -100,14 +100,13 @@ export class FileBrowserSession {
             this.callbacks.onClose?.();
         };
     }
-
+ 
     private loadDirectory(path: string, depth: number) {
         if (!this.ws || !this.isReady) return;
 
         this.currentCommand = `ls_${path}_${depth}`;
         this.commandBuffer = '';
-        const command = `ls -1p "../..${path}"\n`;
-        //const command = 'pwd';
+        const command = `ls -1p "../..${path}"; echo "##FILEBROWSER_DONE##"\n`;
         console.log("Command sent:", command);
         this.ws.send(JSON.stringify({ type: 'input', data: command }));
     }
@@ -116,7 +115,14 @@ export class FileBrowserSession {
         this.commandBuffer += data;
         console.log("Received stdout:", data);
 
-        if (data.includes('$') || data.includes('#') || data.includes('Singularity>')) {
+        // Check if marker appears on its own line (not as part of the echo command)
+        const lines = this.commandBuffer
+            .split(/\r?\n/)
+            .map(line => line.replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '').trim());
+
+        const hasMarkerOutput = lines.some(line => line === '##FILEBROWSER_DONE##');
+
+        if (hasMarkerOutput) {
             this.processLsOutput();
         }
     }
@@ -134,6 +140,8 @@ export class FileBrowserSession {
             .filter(line => {
                 if (!line) return false;
                 if (line.startsWith('ls ')) return false;
+                if (line.includes('echo ')) return false;
+                if (line.includes('##FILEBROWSER_DONE##')) return false;
                 if (line.includes('$')) return false;
                 if (line.includes('#')) return false;
                 if (line.includes('Singularity>')) return false;
