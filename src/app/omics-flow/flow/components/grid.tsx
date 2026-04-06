@@ -190,7 +190,7 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
             </div>
         );
     }
-
+    
     return (
         <Selectable
             transform={transform}
