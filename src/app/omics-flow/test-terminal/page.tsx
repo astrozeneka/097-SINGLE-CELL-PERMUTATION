@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
+import { OMICS_FLOW_WS_URL } from '@/config/api';
 
 export default function TestTerminal() {
     const terminalRef = useRef<HTMLDivElement>(null);
@@ -45,7 +46,7 @@ export default function TestTerminal() {
         terminal.current.open(terminalRef.current);
         fitAddon.fit();
 
-        ws.current = new WebSocket('ws://192.168.64.3:3000/terminal');
+        ws.current = new WebSocket(`${OMICS_FLOW_WS_URL}/terminal`);
 
         ws.current.onopen = () => {
             const credentials = {

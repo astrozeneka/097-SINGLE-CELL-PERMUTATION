@@ -3,6 +3,7 @@ import { Node, RunConfiguration, RunEnvironment } from "../components/node";
 import RunnerTerminal, { RunnerTerminalRef } from "./runner-terminal";
 import { useSshCredentials } from "../../hook/use-ssh-credentials";
 import FileBrowser from "./file-browser";
+import { OMICS_FLOW_API_URL } from "@/config/api";
 
 export default function NodeDetailView({ node }: { node: Node }) {
     const terminalRef = useRef<RunnerTerminalRef>(null);
@@ -39,7 +40,7 @@ export default function NodeDetailView({ node }: { node: Node }) {
 
     const updateNodeField = async (field: string, value: any) => {
         try {
-            await fetch(`http://192.168.64.3:3000/nodes/${node.uid}`, {
+            await fetch(`${OMICS_FLOW_API_URL}/nodes/${node.uid}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
@@ -65,7 +66,7 @@ export default function NodeDetailView({ node }: { node: Node }) {
                     linux_user: credentials.linux_user,
                     private_key: credentials.private_key,
                 });
-                const response = await fetch(`http://192.168.64.3:3000/environments?${params}`, {
+                const response = await fetch(`${OMICS_FLOW_API_URL}/environments?${params}`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json'

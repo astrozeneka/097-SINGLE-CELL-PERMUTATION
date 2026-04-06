@@ -7,6 +7,7 @@ import { Selectable } from "./selectable";
 import { NodeContextMenu } from "./node-context-menu";
 import { CreateNodeDialog } from "./create-node-dialog";
 import { useSshCredentials } from "../../hook/use-ssh-credentials";
+import { OMICS_FLOW_API_URL } from "@/config/api";
 
 export function Grid({ selectedNodes, setSelectedNodes }: {
     selectedNodes: Node[],
@@ -48,7 +49,7 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
 
     const handlePositionChanged = useCallback(async (uid: string, x: number, y: number) => {
         try {
-            const response = await fetch(`http://192.168.64.3:3000/nodes/${uid}`, {
+            const response = await fetch(`${OMICS_FLOW_API_URL}/nodes/${uid}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
@@ -184,7 +185,7 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
     useEffect(() => {
         const fetchNodes = async () => {
             setAreNodesLoading(true);
-            const response = await fetch("http://192.168.64.3:3000/nodes");
+            const response = await fetch(`${OMICS_FLOW_API_URL}/nodes`);
             const data = await response.json();
 
             const nodeDataList = data.map((item: any) => ({
