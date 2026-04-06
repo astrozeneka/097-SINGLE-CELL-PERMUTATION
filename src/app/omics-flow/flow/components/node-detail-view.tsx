@@ -1,12 +1,52 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Node } from "../components/node";
 import RunnerTerminal, { RunnerTerminalRef } from "./runner-terminal";
 import { useSshCredentials } from "../../hook/use-ssh-credentials";
 import FileBrowser from "./file-browser";
 
+interface RunEnvironment {
+    name: string,
+    type: "docker" | "singularity" | "conda" | "system",
+    status: "up-to-date" | "needs-rebuild" | "no-build"
+}
+
 export default function NodeDetailView({ node }: { node: Node }) {
     const terminalRef = useRef<RunnerTerminalRef>(null);
     const credentials = useSshCredentials();
+    const [environments, setEnvironments] = useState<RunEnvironment[]>([]);
+    const [environmentIsLoading, setEnvironmentIsLoading] = useState(false);
+
+    useEffect(() => {
+        const fetchEnvironments = async () => {
+            console.log("Fetch environments")
+            // Load environment list from the backend
+            setEnvironmentIsLoading(true);
+            try {
+                const params = new URLSearchParams({
+                    linux_user: credentials.linux_user,
+                    private_key: credentials.private_key,
+                });
+                const response = await fetch(`http://192.168.64.3:3000/environments?${params}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                if (!response.ok) {
+                    console.error(`Failed to fetch environments: ${response.statusText}`);
+                    return;
+                }
+                const data: { environments: RunEnvironment[] } = await response.json();
+                setEnvironments(data.environments);
+            } catch (error) {
+                console.error(`Error fetching environments: ${error}`);
+            } finally {
+                setEnvironmentIsLoading(false);
+            }
+        };
+
+        fetchEnvironments();
+    }, []);
 
     const handleRunBash = () => {
         if (!terminalRef.current) return;
@@ -52,6 +92,19 @@ export default function NodeDetailView({ node }: { node: Node }) {
                 private_key={credentials.private_key}
                 environment='python-scimap'
             />
+            <div>
+                {environments.length === 0 ? (
+                    <p>No environments found.</p>
+                ) : (
+                    <ul>
+                        {environments.map(env => (
+                            <li key={env.name}>
+                                {env.name} ({env.type}) - {env.status}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
             <ul>
                 {Object.entries(node.exports).map(([key, value]) => (
                     <li key={key}>{key}: {value}</li>
