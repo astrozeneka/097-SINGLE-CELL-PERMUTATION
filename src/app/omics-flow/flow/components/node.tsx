@@ -1,3 +1,15 @@
+export interface RunConfiguration {
+    scriptPath: string;
+    environment: string;
+    args: string[];
+}
+
+export interface RunEnvironment {
+    name: string;
+    type: "docker" | "singularity" | "conda" | "system";
+    status: "up-to-date" | "needs-rebuild" | "no-build";
+}
+
 export interface NodeInfo {
     uid: string;
     name: string;
@@ -6,6 +18,8 @@ export interface NodeInfo {
     "canvas-y": number;
     "edges-in": string[];
     exports: Record<string, string>;
+    scriptArgs?: string;
+    "run-configurations"?: Record<string, RunConfiguration>;
 }
 
 export interface NodeData {
@@ -22,6 +36,8 @@ export class Node {
     y: number;
     edgesIn: string[];
     exports: Record<string, string>;
+    scriptArgs?: string;
+    runConfigurations?: Record<string, RunConfiguration>;
 
     constructor(data: NodeData) {
         this.uid = data.info.uid;
@@ -31,6 +47,8 @@ export class Node {
         this.y = data.info["canvas-y"];
         this.edgesIn = data.info["edges-in"];
         this.exports = data.info.exports;
+        this.scriptArgs = data.info.scriptArgs;
+        this.runConfigurations = data.info["run-configurations"];
     }
 }
 

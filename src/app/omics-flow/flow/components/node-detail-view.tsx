@@ -1,14 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Node } from "../components/node";
+import { Node, RunConfiguration, RunEnvironment } from "../components/node";
 import RunnerTerminal, { RunnerTerminalRef } from "./runner-terminal";
 import { useSshCredentials } from "../../hook/use-ssh-credentials";
 import FileBrowser from "./file-browser";
-
-interface RunEnvironment {
-    name: string,
-    type: "docker" | "singularity" | "conda" | "system",
-    status: "up-to-date" | "needs-rebuild" | "no-build"
-}
 
 export default function NodeDetailView({ node }: { node: Node }) {
     const terminalRef = useRef<RunnerTerminalRef>(null);
@@ -16,8 +10,12 @@ export default function NodeDetailView({ node }: { node: Node }) {
     const [environments, setEnvironments] = useState<RunEnvironment[]>([]);
     const [environmentIsLoading, setEnvironmentIsLoading] = useState(false);
     const [selectedEnvironment, setSelectedEnvironment] = useState<string>('');
-    const [scriptArgs, setScriptArgs] = useState<string>('');
-    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const [pendingRunConfig, setPendingRunConfig] = useState<RunConfiguration | null>(null);
+    const [pendingArgs, setPendingArgs] = useState<string>('');
+
+    useEffect(() => {
+        console.log(node);
+    });
 
     const updateNodeField = async (field: string, value: any) => {
         try {
@@ -67,20 +65,7 @@ export default function NodeDetailView({ node }: { node: Node }) {
         };
 
         fetchEnvironments();
-        setScriptArgs((node as any).scriptArgs || '');
     }, []);
-
-    const handleScriptArgsChange = (value: string) => {
-        setScriptArgs(value);
-
-        if (debounceTimerRef.current) {
-            clearTimeout(debounceTimerRef.current);
-        }
-
-        debounceTimerRef.current = setTimeout(() => {
-            updateNodeField('scriptArgs', value);
-        }, 500);
-    };
 
     const handleRunBash = () => {
         if (!terminalRef.current) return;
@@ -93,21 +78,49 @@ export default function NodeDetailView({ node }: { node: Node }) {
         });
     };
 
-    const handleRunScript = () => {
-        if (!terminalRef.current) return;
+    const handleRunFromFileBrowser = (config: RunConfiguration) => {
+        setPendingRunConfig(config);
+        setPendingArgs(config.args.join('\n'));
+    };
 
-        const scriptPath = 'compute-stats.py';
-        const parsedArgs = scriptArgs ? scriptArgs.split('\n').filter(arg => arg.trim()) : [];
+    const handleExecuteScript = async () => {
+        if (!terminalRef.current || !pendingRunConfig) return;
+
+        const parsedArgs = pendingArgs ? pendingArgs.split('\n').filter(arg => arg.trim()) : [];
+
+        const updatedConfig: RunConfiguration = {
+            ...pendingRunConfig,
+            args: parsedArgs
+        };
+
+        await handleRunConfigChange(pendingRunConfig.scriptPath, updatedConfig);
 
         terminalRef.current.run({
             node_id: node.uid,
             linux_user: credentials.linux_user,
             private_key: credentials.private_key,
-            environment: selectedEnvironment || 'python-scimap/singularity',
-            script: scriptPath,
-            args: parsedArgs,
+            environment: updatedConfig.environment,
+            script: updatedConfig.scriptPath,
+            args: updatedConfig.args,
         });
-    }
+
+        setPendingRunConfig(null);
+        setPendingArgs('');
+    };
+
+    const handleCancelRun = () => {
+        setPendingRunConfig(null);
+        setPendingArgs('');
+    };
+
+    const handleRunConfigChange = async (scriptPath: string, config: RunConfiguration) => {
+        const updatedConfigs = {
+            ...(node.runConfigurations || {}),
+            [scriptPath]: config
+        };
+
+        await updateNodeField('run-configurations', updatedConfigs);
+    };
 
     return (
         <div style={{ padding: "20px" }}>
@@ -118,26 +131,14 @@ export default function NodeDetailView({ node }: { node: Node }) {
                 node_id={node.uid}
                 linux_user={credentials.linux_user}
                 private_key={credentials.private_key}
+                run_configurations={node.runConfigurations || {}}
+                environments={environments}
+                onRun={handleRunFromFileBrowser}
+                onRunConfigChange={handleRunConfigChange}
                 environment='python-scimap'
             />
-            <div>
-                {environments.length === 0 ? (
-                    <p>No environments found.</p>
-                ) : (
-                    <ul>
-                        {environments.map(env => (
-                            <li key={env.name}>
-                                {env.name} ({env.type}) - {env.status}
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </div>
-            <ul>
-                {Object.entries(node.exports).map(([key, value]) => (
-                    <li key={key}>{key}: {value}</li>
-                ))}
-            </ul>
+
+            <hr/>
             <div style={{ marginBottom: "10px" }}>
                 <label htmlFor="environment-selector">Environment: </label>
                 <select
@@ -152,32 +153,34 @@ export default function NodeDetailView({ node }: { node: Node }) {
                         </option>
                     ))}
                 </select>
+
+                <button
+                    onClick={handleRunBash}
+                    disabled={terminalRef.current?.isRunning}
+                >
+                    {terminalRef.current?.isRunning ? 'Running...' : 'Run Bash'}
+                </button>
             </div>
-            <div style={{ marginBottom: "10px" }}>
-                <label htmlFor="script-args">Script Arguments (one per line):</label>
-                <br />
-                <textarea
-                    id="script-args"
-                    value={scriptArgs}
-                    onKeyUp={(e) => handleScriptArgsChange(e.currentTarget.value)}
-                    onChange={(e) => setScriptArgs(e.target.value)}
-                    rows={5}
-                    style={{ width: "100%", fontFamily: "monospace" }}
-                    placeholder="--input-selector&#10;../001-raw-input/output/*/*.csv&#10;--output&#10;./output/cell-counts.csv"
-                />
-            </div>
-            <button
-                onClick={handleRunBash}
-                disabled={terminalRef.current?.isRunning}
-            >
-                {terminalRef.current?.isRunning ? 'Running...' : 'Run Bash'}
-            </button>
-            <button
-                onClick={handleRunScript}
-                disabled={terminalRef.current?.isRunning}
-            >
-                {terminalRef.current?.isRunning ? 'Running...' : 'Run Script'}
-            </button>
+            <hr/>
+
+            {pendingRunConfig && (
+                <div style={{ marginTop: "20px", padding: "10px", border: "1px solid #4A90E2" }}>
+                    <div><strong>Script:</strong> {pendingRunConfig.scriptPath} | <strong>Env:</strong> {pendingRunConfig.environment}</div>
+                    <textarea
+                        value={pendingArgs}
+                        onChange={(e) => setPendingArgs(e.target.value)}
+                        rows={3}
+                        style={{ width: "100%", fontFamily: "monospace", marginTop: "5px" }}
+                        placeholder="--input-selector ../001-raw-input/output/*/*.csv --output ./output/cell-counts.csv"
+                    />
+                    <button onClick={handleExecuteScript} disabled={terminalRef.current?.isRunning}>
+                        Run Script
+                    </button>
+                    <button onClick={handleCancelRun} style={{ marginLeft: "5px" }}>
+                        Cancel
+                    </button>
+                </div>
+            )}
 
             <RunnerTerminal ref={terminalRef} />
         </div>

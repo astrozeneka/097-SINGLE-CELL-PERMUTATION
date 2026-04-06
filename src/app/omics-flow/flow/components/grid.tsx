@@ -35,7 +35,6 @@ export function Grid({ selectedNodes, setSelectedNodes }: {
     }, []);
 
     const handleDrag = useCallback((uid: string, x: number, y: number) => {
-        console.log("handleDrag")
         const node = nodesMap[uid];
         if (node) {
             node.x = x;
