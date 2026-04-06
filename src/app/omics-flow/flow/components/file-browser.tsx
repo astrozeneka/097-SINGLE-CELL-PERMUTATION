@@ -138,7 +138,7 @@ export default function FileBrowser({
                                         >
                                             <option value="">Select environment</option>
                                             {environments.map(env => (
-                                                <option key={env.name} value={env.name}>
+                                                <option key={`${env.name}-${env.type}`} value={env.type === 'singularity' ? `${env.name}/${env.type}` : env.name}>
                                                     {env.name} ({env.type})
                                                 </option>
                                             ))}
