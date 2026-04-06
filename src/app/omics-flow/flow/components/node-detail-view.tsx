@@ -15,6 +15,27 @@ export default function NodeDetailView({ node }: { node: Node }) {
     const credentials = useSshCredentials();
     const [environments, setEnvironments] = useState<RunEnvironment[]>([]);
     const [environmentIsLoading, setEnvironmentIsLoading] = useState(false);
+    const [selectedEnvironment, setSelectedEnvironment] = useState<string>('');
+    const [scriptArgs, setScriptArgs] = useState<string>('');
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    const updateNodeField = async (field: string, value: any) => {
+        try {
+            await fetch(`http://192.168.64.3:3000/nodes/${node.uid}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    linux_user: credentials.linux_user,
+                    private_key: credentials.private_key,
+                    [field]: value
+                })
+            });
+        } catch (error) {
+            console.error(`Error updating node: ${error}`);
+        }
+    };
 
     useEffect(() => {
         const fetchEnvironments = async () => {
@@ -46,38 +67,45 @@ export default function NodeDetailView({ node }: { node: Node }) {
         };
 
         fetchEnvironments();
+        setScriptArgs((node as any).scriptArgs || '');
     }, []);
+
+    const handleScriptArgsChange = (value: string) => {
+        setScriptArgs(value);
+
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+        }
+
+        debounceTimerRef.current = setTimeout(() => {
+            updateNodeField('scriptArgs', value);
+        }, 500);
+    };
 
     const handleRunBash = () => {
         if (!terminalRef.current) return;
-
-        // TODO: Replace these with actual properties from the node object
 
         terminalRef.current.run({
             node_id: node.uid,
             linux_user: credentials.linux_user,
             private_key: credentials.private_key,
-            environment: 'python-scimap/singularity',
+            environment: selectedEnvironment || 'python-scimap/singularity',
         });
     };
 
     const handleRunScript = () => {
         if (!terminalRef.current) return;
 
+        const scriptPath = 'compute-stats.py';
+        const parsedArgs = scriptArgs ? scriptArgs.split('\n').filter(arg => arg.trim()) : [];
 
-        const scriptPath = 'compute-stats.py'; // Where is this in the node?
-
-        const scriptArgs = [
-            "--input-selector", "../001-raw-input/output/*/*.csv",
-            "--output", "./output/cell-counts.csv"
-        ]; // Where are these in the node?
         terminalRef.current.run({
             node_id: node.uid,
             linux_user: credentials.linux_user,
             private_key: credentials.private_key,
-            environment: 'python-scimap/singularity',
+            environment: selectedEnvironment || 'python-scimap/singularity',
             script: scriptPath,
-            args: scriptArgs,
+            args: parsedArgs,
         });
     }
 
@@ -110,6 +138,34 @@ export default function NodeDetailView({ node }: { node: Node }) {
                     <li key={key}>{key}: {value}</li>
                 ))}
             </ul>
+            <div style={{ marginBottom: "10px" }}>
+                <label htmlFor="environment-selector">Environment: </label>
+                <select
+                    id="environment-selector"
+                    value={selectedEnvironment}
+                    onChange={(e) => setSelectedEnvironment(e.target.value)}
+                >
+                    <option value="">Select environment</option>
+                    {environments.map(env => (
+                        <option key={env.name} value={env.name}>
+                            {env.name} ({env.type})
+                        </option>
+                    ))}
+                </select>
+            </div>
+            <div style={{ marginBottom: "10px" }}>
+                <label htmlFor="script-args">Script Arguments (one per line):</label>
+                <br />
+                <textarea
+                    id="script-args"
+                    value={scriptArgs}
+                    onKeyUp={(e) => handleScriptArgsChange(e.currentTarget.value)}
+                    onChange={(e) => setScriptArgs(e.target.value)}
+                    rows={5}
+                    style={{ width: "100%", fontFamily: "monospace" }}
+                    placeholder="--input-selector&#10;../001-raw-input/output/*/*.csv&#10;--output&#10;./output/cell-counts.csv"
+                />
+            </div>
             <button
                 onClick={handleRunBash}
                 disabled={terminalRef.current?.isRunning}
