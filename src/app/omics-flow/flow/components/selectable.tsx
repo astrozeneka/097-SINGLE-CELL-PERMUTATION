@@ -109,21 +109,29 @@ export function Selectable({ children, transform, setSelectedNodes, nodes, nodeD
         >
             {children}
 
-            {selectionBox && (
-                <div
-                    style={{
-                        position: "absolute",
-                        left: `${Math.min(selectionBox.startX, selectionBox.endX)}px`,
-                        top: `${Math.min(selectionBox.startY, selectionBox.endY)}px`,
-                        width: `${Math.abs(selectionBox.endX - selectionBox.startX)}px`,
-                        height: `${Math.abs(selectionBox.endY - selectionBox.startY)}px`,
-                        border: "2px dashed #4A90E2",
-                        background: "rgba(74, 144, 226, 0.1)",
-                        pointerEvents: "none",
-                        zIndex: 1000
-                    }}
-                />
-            )}
+            {selectionBox && (() => {
+                // Convert canvas coordinates back to screen coordinates
+                const screenStartX = selectionBox.startX * transform.scale + transform.x;
+                const screenStartY = selectionBox.startY * transform.scale + transform.y;
+                const screenEndX = selectionBox.endX * transform.scale + transform.x;
+                const screenEndY = selectionBox.endY * transform.scale + transform.y;
+
+                return (
+                    <div
+                        style={{
+                            position: "absolute",
+                            left: `${Math.min(screenStartX, screenEndX)}px`,
+                            top: `${Math.min(screenStartY, screenEndY)}px`,
+                            width: `${Math.abs(screenEndX - screenStartX)}px`,
+                            height: `${Math.abs(screenEndY - screenStartY)}px`,
+                            border: "2px dashed #4A90E2",
+                            background: "rgba(74, 144, 226, 0.1)",
+                            pointerEvents: "none",
+                            zIndex: 1000
+                        }}
+                    />
+                );
+            })()}
         </div>
     )
 }
