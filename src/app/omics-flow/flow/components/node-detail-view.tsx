@@ -12,10 +12,30 @@ export default function NodeDetailView({ node }: { node: Node }) {
     const [selectedEnvironment, setSelectedEnvironment] = useState<string>('');
     const [pendingRunConfig, setPendingRunConfig] = useState<RunConfiguration | null>(null);
     const [pendingArgs, setPendingArgs] = useState<string>('');
+    const [name, setName] = useState(node.name);
+    const [description, setDescription] = useState(node.description);
 
     useEffect(() => {
         console.log(node);
     });
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (name !== node.name) {
+                updateNodeField('name', name);
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [name]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (description !== node.description) {
+                updateNodeField('description', description);
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [description]);
 
     const updateNodeField = async (field: string, value: any) => {
         try {
@@ -124,8 +144,37 @@ export default function NodeDetailView({ node }: { node: Node }) {
 
     return (
         <div style={{ padding: "20px" }}>
-            <h2>{node.name}</h2>
-            <p>{node.description}</p>
+            <textarea
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                style={{
+                    width: "100%",
+                    fontSize: "1.5em",
+                    fontWeight: "bold",
+                    border: "1px solid #ccc",
+                    borderRadius: "4px",
+                    padding: "8px",
+                    marginBottom: "10px",
+                    fontFamily: "inherit",
+                    resize: "vertical",
+                    minHeight: "40px"
+                }}
+            />
+            <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                style={{
+                    width: "100%",
+                    fontSize: "1em",
+                    border: "1px solid #ccc",
+                    borderRadius: "4px",
+                    padding: "8px",
+                    marginBottom: "10px",
+                    fontFamily: "inherit",
+                    resize: "vertical",
+                    minHeight: "60px"
+                }}
+            />
             <h3>Exports:</h3>
             <FileBrowser
                 node_id={node.uid}

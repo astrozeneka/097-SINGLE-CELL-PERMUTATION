@@ -16,7 +16,7 @@ export default function Flow() {
             </div>
             <div style={{ flex: 1}}>
                 {selectedNodes.length === 1 ? (
-                    <NodeDetailView node={selectedNodes[0]} />
+                    <NodeDetailView key={selectedNodes[0].uid} node={selectedNodes[0]} />
                 ) : (selectedNodes.length === 0) ? (
                     <div style={{ padding: "20px" }}>
                         <h2>No node selected</h2>
