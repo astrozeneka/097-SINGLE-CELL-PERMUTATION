@@ -115,7 +115,7 @@ export class FileBrowserSession {
         this.commandBuffer += data;
         console.log("Received stdout:", data);
 
-        if (data.includes('$') || data.includes('#')) {
+        if (data.includes('$') || data.includes('#') || data.includes('Singularity>')) {
             this.processLsOutput();
         }
     }
@@ -135,6 +135,7 @@ export class FileBrowserSession {
                 if (line.startsWith('ls ')) return false;
                 if (line.includes('$')) return false;
                 if (line.includes('#')) return false;
+                if (line.includes('Singularity>')) return false;
                 if (line.match(/^[!@].*:/)) return false;
                 return true;
             });
