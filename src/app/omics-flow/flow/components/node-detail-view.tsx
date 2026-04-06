@@ -185,7 +185,7 @@ export default function NodeDetailView({ node }: { node: Node }) {
                 environments={environments}
                 onRun={handleRunFromFileBrowser}
                 onRunConfigChange={handleRunConfigChange}
-                environment='python-scimap/singularity'
+                environment='system'
             />
 
             <hr/>

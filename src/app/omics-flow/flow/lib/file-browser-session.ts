@@ -106,8 +106,9 @@ export class FileBrowserSession {
 
         this.currentCommand = `ls_${path}_${depth}`;
         this.commandBuffer = '';
-
-        const command = `ls -1p "${path}"\n`;
+        const command = `ls -1p "../..${path}"\n`;
+        //const command = 'pwd';
+        console.log("Command sent:", command);
         this.ws.send(JSON.stringify({ type: 'input', data: command }));
     }
 
