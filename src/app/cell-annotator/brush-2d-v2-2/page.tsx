@@ -101,7 +101,7 @@ export default function Page() {
     }, []);
 
     // FOR DEBUGGIN PURPOSE ONLY
-    useEffect(() => {
+    /*useEffect(() => {
         fetch("/cell-annotator-data-v2/umap_clusters_3d.csv")
             .then(r => r.text())
             .then(text => {
@@ -118,7 +118,7 @@ export default function Page() {
                 });
                 handleLoad(data);
             });
-    }, []);
+    }, []);*/
 
 
     return (
@@ -173,12 +173,14 @@ export default function Page() {
                     <OverlyingCanvasV3
                         size={rcSize}
                         matrix={rcFullMatrix}
+                        modelMatrix={rcMatrix}
                         points={rcNormalizedPoints}
                         onBrush={indices => {
                             const mask = new Float32Array(pointsDataSubset.length);
                             indices.forEach(i => { mask[i] = 1.0; });
                             setSelectionMask(mask);
                         }}
+                        onModelMatrixChange={m => setRcMatrix(m as Float32Array<ArrayBuffer>)}
                     />
                     <div style={{ position: "absolute", bottom: 16, right: 16, display: "flex", gap: 4, zIndex: 10, color: 'white' }}>
                         <button onClick={() => setRcMatrix(m => mat4mul(new Float32Array([1.2,0,0,0, 0,1.2,0,0, 0,0,1.2,0, 0,0,0,1]), m) as Float32Array<ArrayBuffer>)}>[+]</button>
