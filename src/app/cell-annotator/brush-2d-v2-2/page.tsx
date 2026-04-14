@@ -76,6 +76,7 @@ export default function Page() {
     }, [pointsDataSubset]);
 
     const handleLoad = (data: CellDataV2_1[]) => {
+        console.log("Data", data);
         setPointsData(data);
         const patients = Array.from(new Set(data.map(d => d.SampleId)));
         setGroupList(patients);
@@ -99,6 +100,21 @@ export default function Page() {
             rRo.disconnect();
         };
     }, []);
+
+    // Debugging only
+    useEffect(() => {
+        if (!selectionMask) return;
+
+        const selectedPoints = pointsDataSubset.filter((_, i) => selectionMask[i] === 1);
+        const selectedIds = new Set(selectedPoints.map(p => p.id));
+
+        const text = Array.from(selectedIds).join("\n");
+
+        navigator.clipboard.writeText(text)
+            .then(() => console.log("Copied to clipboard"))
+            .catch(err => console.error("Copy failed:", err));
+
+    }, [pointsDataSubset, selectionMask]);
 
     // FOR DEBUGGIN PURPOSE ONLY
     /*useEffect(() => {
