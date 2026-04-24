@@ -134,7 +134,7 @@ export default function ClusterSelectorV2_1({ data, colorEncoder, onMaskChange }
                 </div>
                 <span style={{ color: "#e2e8f0" }}>All</span>
             </div>
-            {clusters.map(({ name, idx }) => {
+            {[...clusters].sort((a, b) => a.name.localeCompare(b.name)).map(({ name, idx }) => {
                 const isHidden = hidden.has(name);
                 return (
                     <div key={name} onClick={() => toggle(name)}

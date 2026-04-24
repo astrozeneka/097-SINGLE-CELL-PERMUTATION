@@ -52,12 +52,11 @@ export default function CsvUploadDialogV2_1({ onLoad }: Props) {
         const sIdx = headers.indexOf(sampleIdCol);
         const idIdx = idCol ? headers.indexOf(idCol) : -1;
 
-        const clusterOrder: string[] = [];
-        const clusterMap = new Map<string, number>();
+        const clusterNames = [...new Set(rawLines.map(l => l.split(",")[cIdx]))].sort();
+        const clusterMap = new Map(clusterNames.map((name, i) => [name, i]));
         const parsed = rawLines.map((line, i) => {
             const cols = line.split(",");
             const cluster = cols[cIdx];
-            if (!clusterMap.has(cluster)) { clusterMap.set(cluster, clusterOrder.length); clusterOrder.push(cluster); }
             return {
                 id: idIdx >= 0 ? cols[idIdx] : String(i),
                 x: +cols[xIdx],
